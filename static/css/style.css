@@ -1,3 +1,7 @@
+/* ==============================
+   RIDESYNC - AUTHENTICATION UI
+   ============================== */
+
 * {
     margin: 0;
     padding: 0;
@@ -5,91 +9,270 @@
 }
 
 body {
-    font-family: Arial, sans-serif;
-    background: #f4f7f6;
+    font-family: Arial, Helvetica, sans-serif;
+    background: linear-gradient(135deg, #eaf4ff, #f7fbff);
+    min-height: 100vh;
+    color: #1f2937;
 }
+
+
+/* MAIN CONTAINER */
 
 .auth-container {
     min-height: 100vh;
+
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 20px;
+
+    padding: 30px 20px;
 }
+
+
+/* LOGIN / REGISTER CARD */
 
 .auth-card {
     width: 100%;
-    max-width: 420px;
-    background: white;
-    padding: 35px;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.10);
+    max-width: 430px;
+
+    background: #ffffff;
+
+    padding: 40px;
+
+    border-radius: 18px;
+
+    box-shadow:
+        0 10px 35px rgba(0, 82, 180, 0.12);
 }
+
+
+/* RIDESYNC TITLE */
 
 .auth-card h1 {
     text-align: center;
-    margin-bottom: 5px;
+
+    color: #0969da;
+
+    font-size: 38px;
+    font-weight: 700;
+
+    margin-bottom: 6px;
 }
+
+
+/* CAMPUS BIKE RENTAL SYSTEM */
 
 .subtitle {
     text-align: center;
-    color: #666;
-    margin-bottom: 30px;
+
+    color: #6b7280;
+
+    font-size: 15px;
+
+    margin-bottom: 32px;
 }
+
+
+/* LOGIN / CREATE ACCOUNT */
 
 .auth-card h2 {
-    margin-bottom: 20px;
+    font-size: 25px;
+
+    margin-bottom: 25px;
+
+    color: #1f2937;
 }
 
-label {
+
+/* FORM */
+
+.auth-card form {
+    width: 100%;
+}
+
+
+/* LABEL */
+
+.auth-card label {
     display: block;
-    margin: 12px 0 6px;
-    font-weight: bold;
+
+    font-size: 14px;
+    font-weight: 600;
+
+    color: #374151;
+
+    margin-bottom: 7px;
 }
 
-input {
+
+/* INPUT */
+
+.auth-card input {
+    display: block;
+
     width: 100%;
-    padding: 12px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
+
+    height: 46px;
+
+    padding: 0 14px;
+
+    margin-bottom: 18px;
+
+    border: 1px solid #d1d5db;
+
+    border-radius: 8px;
+
     font-size: 15px;
+
+    background: #ffffff;
+
+    transition: 0.2s;
 }
 
-input:focus {
+
+/* INPUT PLACEHOLDER */
+
+.auth-card input::placeholder {
+    color: #9ca3af;
+}
+
+
+/* INPUT WHEN SELECTED */
+
+.auth-card input:focus {
     outline: none;
-    border-color: #333;
+
+    border-color: #0969da;
+
+    box-shadow:
+        0 0 0 3px rgba(9, 105, 218, 0.12);
 }
 
-button {
+
+/* LOGIN / REGISTER BUTTON */
+
+.auth-card button {
+    display: block;
+
     width: 100%;
-    margin-top: 20px;
-    padding: 12px;
+
+    height: 48px;
+
+    margin-top: 8px;
+
     border: none;
-    border-radius: 6px;
-    background: #222;
-    color: white;
+
+    border-radius: 8px;
+
+    background: #0969da;
+
+    color: #ffffff;
+
     font-size: 16px;
+    font-weight: 600;
+
     cursor: pointer;
+
+    transition: 0.2s;
 }
 
-button:hover {
-    background: #444;
+
+.auth-card button:hover {
+    background: #0757b5;
+
+    transform: translateY(-1px);
 }
+
+
+/* REGISTER / LOGIN LINK TEXT */
 
 .switch-text {
     text-align: center;
-    margin-top: 20px;
+
+    margin-top: 24px;
+
+    color: #6b7280;
+
+    font-size: 14px;
 }
+
 
 .switch-text a {
-    color: #222;
-    font-weight: bold;
+    color: #0969da;
+
+    font-weight: 600;
+
+    text-decoration: none;
 }
 
+
+.switch-text a:hover {
+    text-decoration: underline;
+}
+
+
+/* ERROR MESSAGE */
+
 .error-message {
-    background: #ffe5e5;
-    padding: 10px;
-    border-radius: 6px;
-    margin-bottom: 15px;
+    background: #fff1f2;
+
+    color: #be123c;
+
+    border: 1px solid #fecdd3;
+
+    padding: 11px 12px;
+
+    border-radius: 8px;
+
+    margin-bottom: 18px;
+
     font-size: 14px;
+}
+
+
+/* LOGOUT BUTTON */
+
+.logout-button {
+    display: block;
+
+    width: 100%;
+
+    margin-top: 25px;
+
+    padding: 13px;
+
+    background: #0969da;
+
+    color: #ffffff;
+
+    text-align: center;
+
+    text-decoration: none;
+
+    border-radius: 8px;
+
+    font-size: 15px;
+    font-weight: 600;
+
+    transition: 0.2s;
+}
+
+
+.logout-button:hover {
+    background: #0757b5;
+}
+
+
+/* MOBILE */
+
+@media (max-width: 500px) {
+
+    .auth-card {
+        padding: 30px 22px;
+    }
+
+    .auth-card h1 {
+        font-size: 32px;
+    }
+
 }
