@@ -1,7 +1,9 @@
 # Byte-compiled / optimized / DLL files
+venv/
 __pycache__/
-*.py[codz]
-*$py.class
+*.pyc
+ridesync.db
+.env
 
 # C extensions
 *.so
@@ -216,3 +218,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+venv/
+__pycache__/
+*.pyc
+ridesync.db
+.env
