@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Dashboard | RideSync</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+
+</head>
+
+
+<body class="dashboard-body">
+
+
+<header class="topbar">
+
+    <div>
+        <h1>RideSync</h1>
+
+        <p>
+            Campus Bike Rental System
+        </p>
+    </div>
+
+
+    <div class="user-area">
+
+        <span>
+            {{ name }}
+        </span>
+
+        <a href="/logout" class="top-logout">
+            Logout
+        </a>
+
+    </div>
+
+</header>
+
+
+<div class="dashboard-layout">
+
+
+    <aside class="sidebar">
+
+        <a href="/" class="active">
+            Dashboard
+        </a>
+
+        <a href="#">
+            Available Bikes
+        </a>
+
+        <a href="#">
+            My Bookings
+        </a>
+
+        <a href="#">
+            Booking History
+        </a>
+
+        <a href="#">
+            Profile
+        </a>
+
+    </aside>
+
+
+    <main class="dashboard-main">
+
+
+        <section class="welcome-section">
+
+            <h2>
+                Welcome, {{ name }}
+            </h2>
+
+            <p>
+                Manage your campus bike rentals from your RideSync dashboard.
+            </p>
+
+        </section>
+
+
+        <section class="dashboard-cards">
+
+
+            <div class="dashboard-card">
+
+                <h3>
+                    Available Bikes
+                </h3>
+
+                <p>
+                    View bikes currently available for rental.
+                </p>
+
+                <a href="#">
+                    View Bikes
+                </a>
+
+            </div>
+
+
+            <div class="dashboard-card">
+
+                <h3>
+                    Book a Bike
+                </h3>
+
+                <p>
+                    Select an available bike and create a booking.
+                </p>
+
+                <a href="#">
+                    Book Bike
+                </a>
+
+            </div>
+
+
+            <div class="dashboard-card">
+
+                <h3>
+                    My Bookings
+                </h3>
+
+                <p>
+                    View and manage your current bookings.
+                </p>
+
+                <a href="#">
+                    View Bookings
+                </a>
+
+            </div>
+
+
+            <div class="dashboard-card">
+
+                <h3>
+                    Booking History
+                </h3>
+
+                <p>
+                    View your previous RideSync rentals.
+                </p>
+
+                <a href="#">
+                    View History
+                </a>
+
+            </div>
+
+
+            <div class="dashboard-card">
+
+                <h3>
+                    Return Bike
+                </h3>
+
+                <p>
+                    Return your currently rented bike.
+                </p>
+
+                <a href="#">
+                    Return Bike
+                </a>
+
+            </div>
+
+
+            <div class="dashboard-card">
+
+                <h3>
+                    Profile
+                </h3>
+
+                <p>
+                    Logged in as @{{ username }}
+                </p>
+
+                <a href="#">
+                    View Profile
+                </a>
+
+            </div>
+
+
+        </section>
+
+
+    </main>
+
+
+</div>
+
+
+</body>
+
+</html>
