@@ -35,6 +35,21 @@ def init_db():
         )
     """)
 
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS vehicles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            type TEXT NOT NULL,
+            brand TEXT NOT NULL,
+            model TEXT NOT NULL,
+            registration_number TEXT UNIQUE NOT NULL,
+            price_per_hour REAL NOT NULL,
+            status TEXT NOT NULL DEFAULT 'available',
+            image TEXT
+        )
+    """)
+
+
     connection.commit()
     connection.close()
 
@@ -47,10 +62,33 @@ def home():
         return f"""
         <h1>Welcome to RideSync, {session['user_name']}!</h1>
         <p>You are successfully logged in.</p>
+
+        <a href="/vehicles">Browse Vehicles</a>
+        <br><br>
         <a href="/logout">Logout</a>
         """
 
     return redirect(url_for("login"))
+# VEHICLES
+
+@app.route("/vehicles")
+def vehicles():
+
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    connection = get_db_connection()
+
+    vehicle_list = connection.execute(
+        "SELECT * FROM vehicles ORDER BY type, id"
+    ).fetchall()
+
+    connection.close()
+
+    return render_template(
+        "vehicles.html",
+        vehicles=vehicle_list
+    )
 
 
 # REGISTER
