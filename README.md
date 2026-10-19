@@ -30,4 +30,6 @@ Mobile delivery uses Twilio. Set these variables to enable SMS:
 Keep these values in the deployment environment and do not commit them to the
 repository. Set `RIDESYNC_SECRET_KEY` to a private random value before deploying.
 The app adds the mobile-number column to existing SQLite databases when it
-initializes.
+initializes. By default, it opens `ridesync.db` next to `app.py`, regardless of
+the directory from which the app is launched. Set `RIDESYNC_DATABASE` to use a
+different database file.

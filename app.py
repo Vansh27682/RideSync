@@ -7,6 +7,7 @@ import secrets
 import smtplib
 import sqlite3
 import time
+from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -18,7 +19,10 @@ from werkzeug.security import check_password_hash, generate_password_hash
 app = Flask(__name__)
 app.secret_key = os.environ.get("RIDESYNC_SECRET_KEY") or secrets.token_hex(32)
 
-DATABASE = os.environ.get("RIDESYNC_DATABASE", "ridesync.db")
+DATABASE = os.environ.get(
+    "RIDESYNC_DATABASE",
+    str(Path(__file__).resolve().with_name("ridesync.db")),
+)
 EMAIL_PATTERN = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
 PHONE_PATTERN = re.compile(r"\+[1-9]\d{7,14}")
 OTP_EXPIRY_SECONDS = 600
@@ -245,52 +249,61 @@ def register():
             if password_error:
                 message = password_error
             else:
-                with closing(get_db_connection()) as connection:
-                    existing_username = connection.execute(
-                        "SELECT id FROM users WHERE username = ?",
-                        (username,),
-                    ).fetchone()
-                    existing_email = connection.execute(
-                        "SELECT id FROM users WHERE email = ?",
-                        (email,),
-                    ).fetchone()
-                    existing_phone = connection.execute(
-                        "SELECT id FROM users WHERE phone = ?",
-                        (phone,),
-                    ).fetchone()
+                try:
+                    with closing(get_db_connection()) as connection:
+                        existing_username = connection.execute(
+                            "SELECT id FROM users WHERE username = ?",
+                            (username,),
+                        ).fetchone()
+                        existing_email = connection.execute(
+                            "SELECT id FROM users WHERE email = ?",
+                            (email,),
+                        ).fetchone()
+                        existing_phone = connection.execute(
+                            "SELECT id FROM users WHERE phone = ?",
+                            (phone,),
+                        ).fetchone()
 
-                    if existing_username:
-                        message = "This username is already taken."
-                    elif existing_email:
-                        message = "An account with this email already exists."
-                    elif existing_phone:
-                        message = "This mobile number is already registered."
-                    else:
-                        try:
-                            connection.execute(
-                                """
-                                INSERT INTO users
-                                    (name, username, email, phone, password_hash)
-                                VALUES (?, ?, ?, ?, ?)
-                                """,
-                                (
-                                    name,
-                                    username,
-                                    email,
-                                    phone,
-                                    generate_password_hash(password),
-                                ),
-                            )
-                            connection.commit()
-                        except sqlite3.IntegrityError:
-                            message = (
-                                "This username, email, or mobile number "
-                                "is already registered."
-                            )
+                        if existing_username:
+                            message = "This username is already taken."
+                        elif existing_email:
+                            message = "An account with this email already exists."
+                        elif existing_phone:
+                            message = "This mobile number is already registered."
                         else:
-                            return redirect(
-                                url_for("login", registered="success")
-                            )
+                            try:
+                                connection.execute(
+                                    """
+                                    INSERT INTO users
+                                        (name, username, email, phone, password_hash)
+                                    VALUES (?, ?, ?, ?, ?)
+                                    """,
+                                    (
+                                        name,
+                                        username,
+                                        email,
+                                        phone,
+                                        generate_password_hash(password),
+                                    ),
+                                )
+                                connection.commit()
+                            except sqlite3.IntegrityError:
+                                message = (
+                                    "This username, email, or mobile number "
+                                    "is already registered."
+                                )
+                            else:
+                                return redirect(
+                                    url_for("login", registered="success")
+                                )
+                except sqlite3.Error:
+                    app.logger.exception(
+                        "Database error while registering an account"
+                    )
+                    message = (
+                        "We couldn't access the account database. "
+                        "Please try again later."
+                    )
 
     return render_template("register.html", message=message)
 
@@ -314,24 +327,31 @@ def login():
         if not identifier or not password:
             message = "Username or email and password are required."
         else:
-            with closing(get_db_connection()) as connection:
-                user = connection.execute(
-                    """
-                    SELECT * FROM users
-                    WHERE username = ? OR email = ?
-                    """,
-                    (identifier, identifier),
-                ).fetchone()
+            try:
+                with closing(get_db_connection()) as connection:
+                    user = connection.execute(
+                        """
+                        SELECT * FROM users
+                        WHERE username = ? OR email = ?
+                        """,
+                        (identifier, identifier),
+                    ).fetchone()
 
-            if user and check_password_hash(user["password_hash"], password):
-                session.clear()
-                session["user_id"] = user["id"]
-                session["user_name"] = user["name"]
-                session["username"] = user["username"]
-                session["role"] = user["role"]
-                return redirect(url_for("home"))
+                if user and check_password_hash(user["password_hash"], password):
+                    session.clear()
+                    session["user_id"] = user["id"]
+                    session["user_name"] = user["name"]
+                    session["username"] = user["username"]
+                    session["role"] = user["role"]
+                    return redirect(url_for("home"))
 
-            message = "Invalid username/email or password."
+                message = "Invalid username/email or password."
+            except sqlite3.Error:
+                app.logger.exception("Database error while logging in")
+                message = (
+                    "We couldn't access the account database. "
+                    "Please try again later."
+                )
 
     return render_template(
         "login.html",
@@ -544,8 +564,11 @@ def logout():
     return redirect(url_for("login"))
 
 
+# Initialize database for both direct and WSGI application startup
+init_db()
+
+
 # Start application
 
 if __name__ == "__main__":
-    init_db()
     app.run(debug=True)
