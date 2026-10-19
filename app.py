@@ -25,6 +25,7 @@ DATABASE = os.environ.get(
 )
 EMAIL_PATTERN = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
 PHONE_PATTERN = re.compile(r"\+[1-9]\d{7,14}")
+INDIAN_PHONE_PATTERN = re.compile(r"(?:\+91)?[6-9]\d{9}")
 OTP_EXPIRY_SECONDS = 600
 OTP_RESEND_WAIT_SECONDS = 60
 OTP_MAX_ATTEMPTS = 5
@@ -36,6 +37,12 @@ def get_db_connection():
     connection = sqlite3.connect(DATABASE)
     connection.row_factory = sqlite3.Row
     return connection
+
+
+def normalize_indian_phone(phone):
+    if not INDIAN_PHONE_PATTERN.fullmatch(phone):
+        return None
+    return phone if phone.startswith("+91") else f"+91{phone}"
 
 
 # Database initialization
@@ -229,6 +236,7 @@ def register():
         username = request.form.get("username", "").strip().lower()
         email = request.form.get("email", "").strip().lower()
         phone = request.form.get("phone", "").strip()
+        normalized_phone = normalize_indian_phone(phone)
         password = request.form.get("password", "")
         confirm_password = request.form.get("confirm_password", "")
 
@@ -240,8 +248,8 @@ def register():
             message = "Username can only contain letters, numbers and underscores."
         elif not EMAIL_PATTERN.fullmatch(email):
             message = "Please enter a valid email address."
-        elif not PHONE_PATTERN.fullmatch(phone):
-            message = "Enter a valid mobile number in international format, such as +14155552671."
+        elif not normalized_phone:
+            message = "Enter a valid Indian mobile number: 10 digits starting with 6-9, optionally prefixed with +91."
         elif password != confirm_password:
             message = "Passwords do not match."
         else:
@@ -261,7 +269,7 @@ def register():
                         ).fetchone()
                         existing_phone = connection.execute(
                             "SELECT id FROM users WHERE phone = ?",
-                            (phone,),
+                            (normalized_phone,),
                         ).fetchone()
 
                         if existing_username:
@@ -282,7 +290,7 @@ def register():
                                         name,
                                         username,
                                         email,
-                                        phone,
+                                        normalized_phone,
                                         generate_password_hash(password),
                                     ),
                                 )
@@ -375,7 +383,12 @@ def forgot_password():
             valid_identifier = bool(EMAIL_PATTERN.fullmatch(identifier))
             query = "SELECT id, email FROM users WHERE email = ?"
         elif channel == "phone":
-            valid_identifier = bool(PHONE_PATTERN.fullmatch(identifier))
+            normalized_identifier = normalize_indian_phone(identifier)
+            if normalized_identifier:
+                identifier = normalized_identifier
+                valid_identifier = True
+            else:
+                valid_identifier = bool(PHONE_PATTERN.fullmatch(identifier))
             query = "SELECT id, phone FROM users WHERE phone = ?"
         else:
             valid_identifier = False

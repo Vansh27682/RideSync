@@ -3,10 +3,13 @@ A bike rental management system designed to simplify campus mobility through eas
 
 ## Account recovery setup
 
-Registration requires a unique email address and mobile number. Enter mobile
-numbers in international E.164 format, such as `+14155552671`. Users can log in
-with either their username or email address. Password recovery sends a
-time-limited, six-digit code to the registered email or mobile number.
+Registration requires a unique email address and Indian mobile number. Enter
+the 10-digit number starting with 6-9, either by itself (for example,
+`9876543210`) or prefixed with `+91` (for example, `+919876543210`). Numbers
+are stored with the `+91` prefix, so both formats are treated as the same
+number. Users can log in with either their username or email address. Password
+recovery sends a time-limited, six-digit code to the registered email or mobile
+number.
 
 Email delivery uses an SMTP account. Set these environment variables before
 running the application:
