@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RideSync - Vehicles</title>
+</head>
+
+<body>
+
+    <h1>RideSync Vehicles</h1>
+
+    <p>Available bikes and scooters</p>
+
+    <hr>
+
+    {% for vehicle in vehicles %}
+
+        <div>
+            <h2>{{ vehicle["brand"] }} {{ vehicle["name"] }}</h2>
+
+            <p>
+                Type: {{ vehicle["type"] }}
+            </p>
+
+            <p>
+                Model: {{ vehicle["model"] }}
+            </p>
+
+            <p>
+                Registration: {{ vehicle["registration_number"] }}
+            </p>
+
+            <p>
+                Price: Rs. {{ vehicle["price_per_hour"] }} / hour
+            </p>
+
+            <p>
+                Status: {{ vehicle["status"] }}
+            </p>
+
+            {% if vehicle["status"] == "available" %}
+                <button>Book Now</button>
+            {% else %}
+                <button disabled>Not Available</button>
+            {% endif %}
+        </div>
+
+        <hr>
+
+    {% endfor %}
+
+    <a href="/">Back to Home</a>
+
+</body>
+</html>

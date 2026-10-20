@@ -35,6 +35,56 @@ def init_db():
         )
     """)
 
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS vehicles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            type TEXT NOT NULL,
+            brand TEXT NOT NULL,
+            model TEXT NOT NULL,
+            registration_number TEXT UNIQUE NOT NULL,
+            price_per_hour REAL NOT NULL,
+            status TEXT NOT NULL DEFAULT 'available',
+            image TEXT
+        )
+    """)
+    vehicle_count = connection.execute(
+        "SELECT COUNT(*) FROM vehicles"
+    ).fetchone()[0]
+
+    if vehicle_count == 0:
+        vehicles = [
+            ("Activa 6G", "Scooter", "Honda", "6G", "UK07RS1001", 40, "available", None),
+            ("Jupiter", "Scooter", "TVS", "ZX", "UK07RS1002", 40, "available", None),
+            ("Access 125", "Scooter", "Suzuki", "125", "UK07RS1003", 45, "available", None),
+            ("Ntorq 125", "Scooter", "TVS", "Race Edition", "UK07RS1004", 50, "available", None),
+            ("Dio", "Scooter", "Honda", "Standard", "UK07RS1005", 40, "available", None),
+            ("Pleasure Plus", "Scooter", "Hero", "XTEC", "UK07RS1006", 40, "available", None),
+            ("Destini 125", "Scooter", "Hero", "XTEC", "UK07RS1007", 45, "available", None),
+            ("RayZR 125", "Scooter", "Yamaha", "Fi Hybrid", "UK07RS1008", 50, "available", None),
+            ("Avenis 125", "Scooter", "Suzuki", "Standard", "UK07RS1009", 45, "available", None),
+            ("Fascino 125", "Scooter", "Yamaha", "Fi Hybrid", "UK07RS1010", 45, "available", None),
+            ("Activa 125", "Scooter", "Honda", "H-Smart", "UK07RS1011", 50, "available", None),
+            ("Jupiter 125", "Scooter", "TVS", "Disc", "UK07RS1012", 50, "available", None),
+
+            ("Pulsar 150", "Bike", "Bajaj", "150", "UK07RS2001", 65, "available", None),
+            ("Apache RTR 160", "Bike", "TVS", "160 4V", "UK07RS2002", 75, "available", None),
+            ("Splendor Plus", "Bike", "Hero", "XTEC", "UK07RS2003", 55, "available", None),
+            ("FZ-S", "Bike", "Yamaha", "FI V4", "UK07RS2004", 75, "available", None),
+            ("Hunter 350", "Bike", "Royal Enfield", "Metro", "UK07RS2005", 100, "available", None),
+            ("Classic 350", "Bike", "Royal Enfield", "Classic", "UK07RS2006", 110, "available", None),
+            ("Pulsar NS200", "Bike", "Bajaj", "NS200", "UK07RS2007", 90, "available", None),
+            ("Apache RTR 200", "Bike", "TVS", "4V", "UK07RS2008", 90, "available", None)
+        ]
+
+        connection.executemany("""
+            INSERT INTO vehicles
+            (name, type, brand, model, registration_number,
+             price_per_hour, status, image)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, vehicles)
+
+
     connection.commit()
     connection.close()
 
@@ -47,10 +97,33 @@ def home():
         return f"""
         <h1>Welcome to RideSync, {session['user_name']}!</h1>
         <p>You are successfully logged in.</p>
+
+        <a href="/vehicles">Browse Vehicles</a>
+        <br><br>
         <a href="/logout">Logout</a>
         """
 
     return redirect(url_for("login"))
+# VEHICLES
+
+@app.route("/vehicles")
+def vehicles():
+
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    connection = get_db_connection()
+
+    vehicle_list = connection.execute(
+        "SELECT * FROM vehicles ORDER BY type, id"
+    ).fetchall()
+
+    connection.close()
+
+    return render_template(
+        "vehicles.html",
+        vehicles=vehicle_list
+    )
 
 
 # REGISTER
