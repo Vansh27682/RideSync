@@ -55,7 +55,7 @@ def test_successful_registration(tmp_path, monkeypatch):
 
     connection = ridesync.get_db_connection()
     user = connection.execute(
-        "SELECT username, email, phone, password_hash FROM users "
+        "SELECT username, email, phone, password FROM users "
         "WHERE username = ?",
         ("testuser123",),
     ).fetchone()
@@ -65,5 +65,7 @@ def test_successful_registration(tmp_path, monkeypatch):
     assert user["email"] == "testuser@example.com"
     assert user["phone"] == "+919876543210"
     assert ridesync.check_password_hash(
-        user["password_hash"], "TestPass123!"
-    )
+        user["password"], "TestPass123!"
+)
+
+    
