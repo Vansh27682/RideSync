@@ -60,19 +60,17 @@ def is_password_hash(value):
 # Database initialization
 
 def init_db():
-    with closing(get_db_connection()) as connection:
-        connection.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                username TEXT UNIQUE NOT NULL,
-                email TEXT UNIQUE NOT NULL,
-                phone TEXT,
-                password_hash TEXT NOT NULL,
-                role TEXT NOT NULL DEFAULT 'student',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
+    connection = get_db_connection()
+
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'student'
+        )
+    """)
 
         columns = {
             row["name"]
@@ -356,8 +354,14 @@ def clear_password_reset_session():
 
 @app.route("/")
 def home():
-    if "user_id" not in session:
-        return redirect(url_for("login"))
+    if "user_id" in session:
+        return f"""
+        <h1>Welcome to RideSync, {session['user_name']}!</h1>
+        <p>You are successfully logged in.</p>
+        <a href="/logout">Logout</a>
+        """
+
+    return redirect(url_for("login"))
 
     return render_template(
         "dashboard.html",
