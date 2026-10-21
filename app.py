@@ -45,6 +45,18 @@ def normalize_indian_phone(phone):
     return phone if phone.startswith("+91") else f"+91{phone}"
 
 
+def is_password_hash(value):
+    if not isinstance(value, str):
+        return False
+
+    parts = value.split("$")
+    return (
+        len(parts) == 3
+        and parts[0].startswith(("scrypt:", "pbkdf2:"))
+        and bool(re.fullmatch(r"[0-9a-fA-F]+", parts[2]))
+    )
+
+
 # Database initialization
 
 def init_db():
@@ -66,12 +78,142 @@ def init_db():
             row["name"]
             for row in connection.execute("PRAGMA table_info(users)").fetchall()
         }
-        if "phone" not in columns:
-            connection.execute("ALTER TABLE users ADD COLUMN phone TEXT")
+        for column, definition in (
+            ("username", "TEXT"),
+            ("phone", "TEXT"),
+            ("password_hash", "TEXT"),
+            ("role", "TEXT NOT NULL DEFAULT 'student'"),
+            ("created_at", "TIMESTAMP"),
+        ):
+            if column not in columns:
+                connection.execute(
+                    f"ALTER TABLE users ADD COLUMN {column} {definition}"
+                )
+
+        columns = {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(users)").fetchall()
+        }
+        if "password" not in columns and "password_hash" not in columns:
+            raise RuntimeError(
+                "The users table has no password column to migrate."
+            )
+
+        password_column = ", password" if "password" in columns else ""
+        user_rows = connection.execute(
+            "SELECT id, name, email, username, password_hash"
+            f"{password_column} FROM users ORDER BY id"
+        ).fetchall()
+
+        usernames = []
+        used_usernames = set()
+        for user in user_rows:
+            current_username = user["username"] or ""
+            base_username = (
+                current_username
+                if re.fullmatch(r"[A-Za-z0-9_]+", current_username)
+                else user["email"].split("@", 1)[0]
+            )
+            base_username = re.sub(
+                r"[^A-Za-z0-9_]", "_", base_username
+            ).strip("_").lower() or f"user{user['id']}"
+            username = base_username
+            suffix = 2
+            while username in used_usernames:
+                username = f"{base_username}_{suffix}"
+                suffix += 1
+            used_usernames.add(username)
+            usernames.append(username)
+
+        existing_usernames = {
+            user["username"]
+            for user in user_rows
+            if user["username"]
+        }
+        temporary_usernames = []
+        for user in user_rows:
+            temporary_username = f"__ridesync_migrating_{user['id']}"
+            while (
+                temporary_username in existing_usernames
+                or temporary_username in used_usernames
+            ):
+                temporary_username += "_"
+            temporary_usernames.append(temporary_username)
+
+        usernames_changed = any(
+            user["username"] != username
+            for user, username in zip(user_rows, usernames)
+        )
+        if usernames_changed:
+            for user, temporary_username in zip(user_rows, temporary_usernames):
+                connection.execute(
+                    "UPDATE users SET username = ? WHERE id = ?",
+                    (temporary_username, user["id"]),
+                )
+
+        for user, username in zip(user_rows, usernames):
+            password_hash = user["password_hash"]
+            legacy_password = user["password"] if "password" in columns else None
+            if not is_password_hash(password_hash):
+                if is_password_hash(legacy_password):
+                    password_hash = legacy_password
+                elif password_hash is not None:
+                    password_hash = generate_password_hash(password_hash)
+                elif legacy_password is not None:
+                    password_hash = generate_password_hash(legacy_password)
+                else:
+                    raise RuntimeError(
+                        f"User {user['id']} has no password to migrate."
+                    )
+
+            if (
+                user["username"] == username
+                and user["password_hash"] == password_hash
+                and ("password" not in columns or legacy_password == password_hash)
+            ):
+                continue
+
+            if "password" in columns:
+                connection.execute(
+                    """
+                    UPDATE users
+                    SET username = ?, password_hash = ?, password = ?
+                    WHERE id = ?
+                    """,
+                    (username, password_hash, password_hash, user["id"]),
+                )
+            else:
+                connection.execute(
+                    """
+                    UPDATE users
+                    SET username = ?, password_hash = ?
+                    WHERE id = ?
+                    """,
+                    (username, password_hash, user["id"]),
+                )
+
+        duplicate_phone = connection.execute("""
+            SELECT phone
+            FROM users
+            WHERE phone IS NOT NULL
+            GROUP BY phone
+            HAVING COUNT(*) > 1
+            LIMIT 1
+        """).fetchone()
+        if duplicate_phone:
+            app.logger.warning(
+                "Existing duplicate phone values prevent creation of the "
+                "unique phone index; existing account data was preserved."
+            )
+        else:
+            connection.execute("""
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone
+                ON users(phone)
+            """)
 
         connection.execute("""
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone
-            ON users(phone)
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username
+            ON users(username)
         """)
 
         connection.execute("""
@@ -280,20 +422,46 @@ def register():
                             message = "This mobile number is already registered."
                         else:
                             try:
-                                connection.execute(
-                                    """
-                                    INSERT INTO users
-                                        (name, username, email, phone, password_hash)
-                                    VALUES (?, ?, ?, ?, ?)
-                                    """,
-                                    (
-                                        name,
-                                        username,
-                                        email,
-                                        normalized_phone,
-                                        generate_password_hash(password),
-                                    ),
-                                )
+                                password_hash = generate_password_hash(password)
+                                user_columns = {
+                                    row["name"]
+                                    for row in connection.execute(
+                                        "PRAGMA table_info(users)"
+                                    ).fetchall()
+                                }
+                                if "password" in user_columns:
+                                    connection.execute(
+                                        """
+                                        INSERT INTO users
+                                            (name, username, email, phone,
+                                             password_hash, password)
+                                        VALUES (?, ?, ?, ?, ?, ?)
+                                        """,
+                                        (
+                                            name,
+                                            username,
+                                            email,
+                                            normalized_phone,
+                                            password_hash,
+                                            password_hash,
+                                        ),
+                                    )
+                                else:
+                                    connection.execute(
+                                        """
+                                        INSERT INTO users
+                                            (name, username, email, phone,
+                                             password_hash)
+                                        VALUES (?, ?, ?, ?, ?)
+                                        """,
+                                        (
+                                            name,
+                                            username,
+                                            email,
+                                            normalized_phone,
+                                            password_hash,
+                                        ),
+                                    )
                                 connection.commit()
                             except sqlite3.IntegrityError:
                                 message = (
@@ -558,10 +726,27 @@ def reset_password():
                 message = password_error
             else:
                 with closing(get_db_connection()) as connection:
-                    connection.execute(
-                        "UPDATE users SET password_hash = ? WHERE id = ?",
-                        (generate_password_hash(password), user_id),
-                    )
+                    password_hash = generate_password_hash(password)
+                    user_columns = {
+                        row["name"]
+                        for row in connection.execute(
+                            "PRAGMA table_info(users)"
+                        ).fetchall()
+                    }
+                    if "password" in user_columns:
+                        connection.execute(
+                            """
+                            UPDATE users
+                            SET password_hash = ?, password = ?
+                            WHERE id = ?
+                            """,
+                            (password_hash, password_hash, user_id),
+                        )
+                    else:
+                        connection.execute(
+                            "UPDATE users SET password_hash = ? WHERE id = ?",
+                            (password_hash, user_id),
+                        )
                     connection.commit()
                 clear_password_reset_session()
                 return redirect(url_for("login", reset="success"))
