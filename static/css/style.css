@@ -1,22 +1,17 @@
-/* ==============================
-   RIDESYNC - AUTHENTICATION UI
-   ============================== */
-
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
+
 body {
     font-family: Arial, Helvetica, sans-serif;
-    background: linear-gradient(135deg, #eaf4ff, #f7fbff);
-    min-height: 100vh;
     color: #1f2937;
 }
 
 
-/* MAIN CONTAINER */
+/* Authentication */
 
 .auth-container {
     min-height: 100vh;
@@ -26,18 +21,22 @@ body {
     align-items: center;
 
     padding: 30px 20px;
+
+    background: linear-gradient(
+        135deg,
+        #eaf4ff,
+        #f8fbff
+    );
 }
 
-
-/* LOGIN / REGISTER CARD */
 
 .auth-card {
     width: 100%;
     max-width: 430px;
 
-    background: #ffffff;
-
     padding: 40px;
+
+    background: white;
 
     border-radius: 18px;
 
@@ -46,72 +45,48 @@ body {
 }
 
 
-/* RIDESYNC TITLE */
-
 .auth-card h1 {
     text-align: center;
 
     color: #0969da;
 
     font-size: 38px;
-    font-weight: 700;
 
     margin-bottom: 6px;
 }
 
-
-/* CAMPUS BIKE RENTAL SYSTEM */
 
 .subtitle {
     text-align: center;
 
     color: #6b7280;
 
-    font-size: 15px;
-
-    margin-bottom: 32px;
+    margin-bottom: 30px;
 }
 
-
-/* LOGIN / CREATE ACCOUNT */
 
 .auth-card h2 {
+    margin-bottom: 22px;
+
     font-size: 25px;
-
-    margin-bottom: 25px;
-
-    color: #1f2937;
 }
 
-
-/* FORM */
-
-.auth-card form {
-    width: 100%;
-}
-
-
-/* LABEL */
 
 .auth-card label {
     display: block;
 
+    margin-bottom: 7px;
+
     font-size: 14px;
     font-weight: 600;
-
-    color: #374151;
-
-    margin-bottom: 7px;
 }
 
 
-/* INPUT */
-
-.auth-card input {
+.auth-card input,
+.auth-card select {
     display: block;
 
     width: 100%;
-
     height: 46px;
 
     padding: 0 14px;
@@ -123,23 +98,11 @@ body {
     border-radius: 8px;
 
     font-size: 15px;
-
-    background: #ffffff;
-
-    transition: 0.2s;
 }
 
 
-/* INPUT PLACEHOLDER */
-
-.auth-card input::placeholder {
-    color: #9ca3af;
-}
-
-
-/* INPUT WHEN SELECTED */
-
-.auth-card input:focus {
+.auth-card input:focus,
+.auth-card select:focus {
     outline: none;
 
     border-color: #0969da;
@@ -149,42 +112,57 @@ body {
 }
 
 
-/* LOGIN / REGISTER BUTTON */
-
 .auth-card button {
-    display: block;
-
     width: 100%;
-
     height: 48px;
 
     margin-top: 8px;
 
     border: none;
-
     border-radius: 8px;
 
     background: #0969da;
 
-    color: #ffffff;
+    color: white;
 
     font-size: 16px;
     font-weight: 600;
 
     cursor: pointer;
-
-    transition: 0.2s;
 }
 
 
 .auth-card button:hover {
     background: #0757b5;
-
-    transform: translateY(-1px);
 }
 
 
-/* REGISTER / LOGIN LINK TEXT */
+.password-hint {
+    margin-top: -10px;
+    margin-bottom: 18px;
+
+    color: #6b7280;
+
+    font-size: 12px;
+}
+
+
+.recovery-link {
+    margin-top: -8px;
+    margin-bottom: 18px;
+
+    text-align: right;
+
+    font-size: 13px;
+}
+
+
+.recovery-link a {
+    color: #0969da;
+
+    text-decoration: none;
+}
+
 
 .switch-text {
     text-align: center;
@@ -206,13 +184,6 @@ body {
 }
 
 
-.switch-text a:hover {
-    text-decoration: underline;
-}
-
-
-/* ERROR MESSAGE */
-
 .error-message {
     background: #fff1f2;
 
@@ -220,59 +191,261 @@ body {
 
     border: 1px solid #fecdd3;
 
-    padding: 11px 12px;
-
-    border-radius: 8px;
+    padding: 11px;
 
     margin-bottom: 18px;
+
+    border-radius: 8px;
 
     font-size: 14px;
 }
 
 
-/* LOGOUT BUTTON */
+.success-message {
+    background: #ecfdf5;
 
-.logout-button {
-    display: block;
+    color: #047857;
 
-    width: 100%;
+    border: 1px solid #a7f3d0;
 
-    margin-top: 25px;
+    padding: 11px;
 
-    padding: 13px;
-
-    background: #0969da;
-
-    color: #ffffff;
-
-    text-align: center;
-
-    text-decoration: none;
+    margin-bottom: 18px;
 
     border-radius: 8px;
 
+    font-size: 14px;
+}
+
+
+/* Dashboard */
+
+.dashboard-body {
+    min-height: 100vh;
+
+    background: #f4f7fb;
+}
+
+
+.topbar {
+    height: 85px;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 0 35px;
+
+    background: white;
+
+    border-bottom: 1px solid #e5e7eb;
+}
+
+
+.topbar h1 {
+    color: #0969da;
+
+    font-size: 30px;
+}
+
+
+.topbar p {
+    margin-top: 3px;
+
+    color: #6b7280;
+
+    font-size: 13px;
+}
+
+
+.user-area {
+    display: flex;
+    align-items: center;
+
+    gap: 20px;
+
+    font-weight: 600;
+}
+
+
+.top-logout {
+    padding: 9px 16px;
+
+    background: #0969da;
+
+    color: white;
+
+    border-radius: 7px;
+
+    text-decoration: none;
+}
+
+
+.dashboard-layout {
+    display: flex;
+
+    min-height: calc(100vh - 85px);
+}
+
+
+.sidebar {
+    width: 230px;
+
+    padding: 25px 15px;
+
+    background: #ffffff;
+
+    border-right: 1px solid #e5e7eb;
+}
+
+
+.sidebar a {
+    display: block;
+
+    padding: 13px 15px;
+
+    margin-bottom: 7px;
+
+    color: #4b5563;
+
+    border-radius: 8px;
+
+    text-decoration: none;
+
     font-size: 15px;
+}
+
+
+.sidebar a:hover,
+.sidebar a.active {
+    background: #eaf4ff;
+
+    color: #0969da;
+
+    font-weight: 600;
+}
+
+
+.dashboard-main {
+    flex: 1;
+
+    padding: 35px;
+}
+
+
+.welcome-section {
+    margin-bottom: 30px;
+}
+
+
+.welcome-section h2 {
+    margin-bottom: 8px;
+
+    font-size: 28px;
+}
+
+
+.welcome-section p {
+    color: #6b7280;
+}
+
+
+.dashboard-cards {
+    display: grid;
+
+    grid-template-columns:
+        repeat(auto-fit, minmax(230px, 1fr));
+
+    gap: 20px;
+}
+
+
+.dashboard-card {
+    min-height: 180px;
+
+    padding: 24px;
+
+    background: white;
+
+    border-radius: 12px;
+
+    box-shadow:
+        0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+
+.dashboard-card h3 {
+    margin-bottom: 12px;
+
+    color: #111827;
+}
+
+
+.dashboard-card p {
+    min-height: 50px;
+
+    margin-bottom: 20px;
+
+    color: #6b7280;
+
+    line-height: 1.5;
+
+    font-size: 14px;
+}
+
+
+.dashboard-card a {
+    color: #0969da;
+
     font-weight: 600;
 
-    transition: 0.2s;
+    text-decoration: none;
 }
 
 
-.logout-button:hover {
-    background: #0757b5;
-}
+/* Mobile */
 
-
-/* MOBILE */
-
-@media (max-width: 500px) {
+@media (max-width: 700px) {
 
     .auth-card {
         padding: 30px 22px;
     }
 
-    .auth-card h1 {
-        font-size: 32px;
+
+    .topbar {
+        height: auto;
+
+        padding: 18px;
+
+        gap: 15px;
+    }
+
+
+    .dashboard-layout {
+        display: block;
+    }
+
+
+    .sidebar {
+        width: 100%;
+
+        display: flex;
+
+        overflow-x: auto;
+
+        padding: 10px;
+    }
+
+
+    .sidebar a {
+        white-space: nowrap;
+
+        margin: 0 5px;
+    }
+
+
+    .dashboard-main {
+        padding: 20px;
     }
 
 }

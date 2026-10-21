@@ -1,13 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
     <title>Register | RideSync</title>
 
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='css/style.css') }}">
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
 </head>
 
 <body>
@@ -17,54 +24,129 @@
     <div class="auth-card">
 
         <h1>RideSync</h1>
-        <p class="subtitle">Campus Bike Rental System</p>
+
+        <p class="subtitle">
+            Campus Bike Rental System
+        </p>
 
         <h2>Create Account</h2>
+
+
         {% if message %}
-        <p class="error-message">{{ message }}</p>
+
+        <p class="error-message">
+            {{ message }}
+        </p>
+
         {% endif %}
 
-        <form method="POST" action="/register">
 
-            <label>Full Name</label>
+        <form method="POST" action="{{ url_for('register') }}">
+
+            <label for="name">
+                Full Name
+            </label>
+
             <input
                 type="text"
+                id="name"
                 name="name"
                 placeholder="Enter your full name"
                 required
             >
 
-            <label>Email</label>
+
+            <label for="username">
+                Username
+            </label>
+
+            <input
+                type="text"
+                id="username"
+                name="username"
+                placeholder="Choose a unique username"
+                required
+            >
+
+
+            <label for="email">
+                Email
+            </label>
+
             <input
                 type="email"
+                id="email"
                 name="email"
                 placeholder="Enter your email"
+                autocomplete="email"
                 required
             >
 
-            <label>Password</label>
+
+            <label for="phone">
+                Indian Mobile Number
+            </label>
+
+            <input
+                type="tel"
+                id="phone"
+                name="phone"
+                placeholder="9876543210 or +919876543210"
+                autocomplete="tel"
+                pattern="(\+91)?[6-9][0-9]{9}"
+                title="Enter a 10-digit Indian mobile number starting with 6-9, optionally prefixed with +91"
+                required
+            >
+
+
+            <label for="password">
+                Password
+            </label>
+
             <input
                 type="password"
+                id="password"
                 name="password"
-                placeholder="Create password"
+                placeholder="Create a strong password"
+                autocomplete="new-password"
                 required
             >
 
-            <label>Confirm Password</label>
+            <p class="password-hint">
+                Minimum 8 characters with a letter,
+                number and special character.
+            </p>
+
+
+            <label for="confirm_password">
+                Confirm Password
+            </label>
+
             <input
                 type="password"
+                id="confirm_password"
                 name="confirm_password"
-                placeholder="Confirm password"
+                placeholder="Enter password again"
+                autocomplete="new-password"
                 required
             >
 
-            <button type="submit">Register</button>
+
+            <button type="submit">
+                Create Account
+            </button>
 
         </form>
 
+
         <p class="switch-text">
+
             Already have an account?
-            <a href="/login">Login</a>
+
+            <a href="/login">
+                Login
+            </a>
+
         </p>
 
     </div>
@@ -72,4 +154,5 @@
 </div>
 
 </body>
+
 </html>

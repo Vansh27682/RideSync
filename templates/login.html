@@ -1,13 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
     <title>Login | RideSync</title>
 
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='css/style.css') }}">
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+
 </head>
+
 
 <body>
 
@@ -16,38 +27,81 @@
     <div class="auth-card">
 
         <h1>RideSync</h1>
-        <p class="subtitle">Campus Bike Rental System</p>
+
+        <p class="subtitle">
+            Campus Bike Rental System
+        </p>
+
 
         <h2>Login</h2>
-        {% if message %}
-        <p class="error-message">{{ message }}</p>
+
+
+        {% if success_message %}
+
+        <p class="success-message">
+            {{ success_message }}
+        </p>
+
         {% endif %}
 
-        <form method="POST" action="/login">
 
-            <label>Email</label>
+        {% if message %}
+
+        <p class="error-message">
+            {{ message }}
+        </p>
+
+        {% endif %}
+
+
+        <form method="POST" action="{{ url_for('login') }}">
+
+            <label for="identifier">
+                Username or Email
+            </label>
+
             <input
-                type="email"
-                name="email"
-                placeholder="Enter your email"
+                type="text"
+                id="identifier"
+                name="identifier"
+                placeholder="Enter your username or email"
+                autocomplete="username"
                 required
             >
 
-            <label>Password</label>
+
+            <label for="password">
+                Password
+            </label>
+
             <input
                 type="password"
+                id="password"
                 name="password"
                 placeholder="Enter your password"
+                autocomplete="current-password"
                 required
             >
 
-            <button type="submit">Login</button>
+            <p class="recovery-link">
+                <a href="{{ url_for('forgot_password') }}">Forgot password?</a>
+            </p>
+
+            <button type="submit">
+                Login
+            </button>
 
         </form>
 
+
         <p class="switch-text">
+
             Don't have an account?
-            <a href="/register">Register</a>
+
+            <a href="/register">
+                Register
+            </a>
+
         </p>
 
     </div>
@@ -55,4 +109,5 @@
 </div>
 
 </body>
+
 </html>
