@@ -19,16 +19,40 @@ from werkzeug.security import check_password_hash, generate_password_hash
 app = Flask(__name__)
 app.secret_key = os.environ.get("RIDESYNC_SECRET_KEY") or secrets.token_hex(32)
 
-DATABASE = os.environ.get(
-    "RIDESYNC_DATABASE",
-    str(Path(__file__).resolve().with_name("ridesync.db")),
-)
+database_setting = Path(
+    os.environ.get("RIDESYNC_DATABASE", "ridesync.db")
+).expanduser()
+if not database_setting.is_absolute():
+    database_setting = Path(__file__).resolve().parent / database_setting
+DATABASE = str(database_setting.resolve())
 EMAIL_PATTERN = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
 PHONE_PATTERN = re.compile(r"\+[1-9]\d{7,14}")
 INDIAN_PHONE_PATTERN = re.compile(r"(?:\+91)?[6-9]\d{9}")
 OTP_EXPIRY_SECONDS = 600
 OTP_RESEND_WAIT_SECONDS = 60
 OTP_MAX_ATTEMPTS = 5
+DEFAULT_VEHICLES = (
+    ("Activa 6G", "Scooter", "Honda", "6G", "UK07RS1001", 40, "available", None),
+    ("Jupiter", "Scooter", "TVS", "ZX", "UK07RS1002", 40, "available", None),
+    ("Access 125", "Scooter", "Suzuki", "125", "UK07RS1003", 45, "available", None),
+    ("Ntorq 125", "Scooter", "TVS", "Race Edition", "UK07RS1004", 50, "available", None),
+    ("Dio", "Scooter", "Honda", "Standard", "UK07RS1005", 40, "available", None),
+    ("Pleasure Plus", "Scooter", "Hero", "XTEC", "UK07RS1006", 40, "available", None),
+    ("Destini 125", "Scooter", "Hero", "XTEC", "UK07RS1007", 45, "available", None),
+    ("RayZR 125", "Scooter", "Yamaha", "Fi Hybrid", "UK07RS1008", 50, "available", None),
+    ("Avenis 125", "Scooter", "Suzuki", "Standard", "UK07RS1009", 45, "available", None),
+    ("Fascino 125", "Scooter", "Yamaha", "Fi Hybrid", "UK07RS1010", 45, "available", None),
+    ("Activa 125", "Scooter", "Honda", "H-Smart", "UK07RS1011", 50, "available", None),
+    ("Jupiter 125", "Scooter", "TVS", "Disc", "UK07RS1012", 50, "available", None),
+    ("Pulsar 150", "Bike", "Bajaj", "150", "UK07RS2001", 65, "available", None),
+    ("Apache RTR 160", "Bike", "TVS", "160 4V", "UK07RS2002", 75, "available", None),
+    ("Splendor Plus", "Bike", "Hero", "XTEC", "UK07RS2003", 55, "available", None),
+    ("FZ-S", "Bike", "Yamaha", "FI V4", "UK07RS2004", 75, "available", None),
+    ("Hunter 350", "Bike", "Royal Enfield", "Metro", "UK07RS2005", 100, "available", None),
+    ("Classic 350", "Bike", "Royal Enfield", "Classic", "UK07RS2006", 110, "available", None),
+    ("Pulsar NS200", "Bike", "Bajaj", "NS200", "UK07RS2007", 90, "available", None),
+    ("Apache RTR 200", "Bike", "TVS", "4V", "UK07RS2008", 90, "available", None),
+)
 
 
 # Database connection
@@ -60,17 +84,19 @@ def is_password_hash(value):
 # Database initialization
 
 def init_db():
-    connection = get_db_connection()
-
-    connection.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            role TEXT NOT NULL DEFAULT 'student'
-        )
-    """)
+    with closing(get_db_connection()) as connection:
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                username TEXT NOT NULL UNIQUE,
+                email TEXT UNIQUE NOT NULL,
+                phone TEXT,
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'student',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
 
         columns = {
             row["name"]
@@ -112,9 +138,10 @@ def init_db():
                 if re.fullmatch(r"[A-Za-z0-9_]+", current_username)
                 else user["email"].split("@", 1)[0]
             )
-            base_username = re.sub(
-                r"[^A-Za-z0-9_]", "_", base_username
-            ).strip("_").lower() or f"user{user['id']}"
+            base_username = (
+                re.sub(r"[^A-Za-z0-9_]", "_", base_username).strip("_").lower()
+                or f"user{user['id']}"
+            )
             username = base_username
             suffix = 2
             while username in used_usernames:
@@ -123,26 +150,21 @@ def init_db():
             used_usernames.add(username)
             usernames.append(username)
 
-        existing_usernames = {
-            user["username"]
-            for user in user_rows
-            if user["username"]
-        }
-        temporary_usernames = []
-        for user in user_rows:
-            temporary_username = f"__ridesync_migrating_{user['id']}"
-            while (
-                temporary_username in existing_usernames
-                or temporary_username in used_usernames
-            ):
-                temporary_username += "_"
-            temporary_usernames.append(temporary_username)
-
         usernames_changed = any(
             user["username"] != username
             for user, username in zip(user_rows, usernames)
         )
         if usernames_changed:
+            existing_usernames = {
+                user["username"] for user in user_rows if user["username"]
+            }
+            temporary_usernames = []
+            for user in user_rows:
+                temporary_username = f"__ridesync_migrating_{user['id']}"
+                while temporary_username in existing_usernames:
+                    temporary_username += "_"
+                existing_usernames.add(temporary_username)
+                temporary_usernames.append(temporary_username)
             for user, temporary_username in zip(user_rows, temporary_usernames):
                 connection.execute(
                     "UPDATE users SET username = ? WHERE id = ?",
@@ -183,36 +205,62 @@ def init_db():
             else:
                 connection.execute(
                     """
-                    UPDATE users
-                    SET username = ?, password_hash = ?
+                    UPDATE users SET username = ?, password_hash = ?
                     WHERE id = ?
                     """,
                     (username, password_hash, user["id"]),
                 )
 
-        duplicate_phone = connection.execute("""
-            SELECT phone
-            FROM users
-            WHERE phone IS NOT NULL
-            GROUP BY phone
-            HAVING COUNT(*) > 1
-            LIMIT 1
-        """).fetchone()
-        if duplicate_phone:
-            app.logger.warning(
-                "Existing duplicate phone values prevent creation of the "
-                "unique phone index; existing account data was preserved."
-            )
-        else:
-            connection.execute("""
-                CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone
-                ON users(phone)
-            """)
+        for column, index_name in (
+            ("username", "idx_users_username"),
+            ("email", "idx_users_email"),
+            ("phone", "idx_users_phone"),
+        ):
+            duplicate = connection.execute(
+                f"""
+                SELECT {column}
+                FROM users
+                WHERE {column} IS NOT NULL
+                GROUP BY {column}
+                HAVING COUNT(*) > 1
+                LIMIT 1
+                """
+            ).fetchone()
+            if duplicate:
+                app.logger.warning(
+                    "Existing duplicate %s values prevent creation of the "
+                    "unique account index; existing records were preserved.",
+                    column,
+                )
+            else:
+                connection.execute(
+                    f"CREATE UNIQUE INDEX IF NOT EXISTS {index_name} "
+                    f"ON users({column})"
+                )
 
         connection.execute("""
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username
-            ON users(username)
+            CREATE TABLE IF NOT EXISTS vehicles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                type TEXT NOT NULL,
+                brand TEXT NOT NULL,
+                model TEXT NOT NULL,
+                registration_number TEXT UNIQUE NOT NULL,
+                price_per_hour REAL NOT NULL,
+                status TEXT NOT NULL DEFAULT 'available',
+                image TEXT
+            )
         """)
+        vehicle_count = connection.execute(
+            "SELECT COUNT(*) FROM vehicles"
+        ).fetchone()[0]
+        if vehicle_count == 0:
+            connection.executemany("""
+                INSERT INTO vehicles
+                    (name, type, brand, model, registration_number,
+                     price_per_hour, status, image)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, DEFAULT_VEHICLES)
 
         connection.execute("""
             CREATE TABLE IF NOT EXISTS password_reset_otps (
@@ -354,21 +402,27 @@ def clear_password_reset_session():
 
 @app.route("/")
 def home():
-    if "user_id" in session:
-        return f"""
-        <h1>Welcome to RideSync, {session['user_name']}!</h1>
-        <p>You are successfully logged in.</p>
-        <a href="/logout">Logout</a>
-        """
-
-    return redirect(url_for("login"))
-
+    if "user_id" not in session:
+        return redirect(url_for("login"))
     return render_template(
         "dashboard.html",
         name=session["user_name"],
         username=session["username"],
         role=session["role"],
     )
+
+
+@app.route("/vehicles")
+def vehicles():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    with closing(get_db_connection()) as connection:
+        vehicle_list = connection.execute(
+            "SELECT * FROM vehicles ORDER BY type, id"
+        ).fetchall()
+
+    return render_template("vehicles.html", vehicles=vehicle_list)
 
 
 # Registration
@@ -764,6 +818,12 @@ def reset_password():
 def logout():
     session.clear()
     return redirect(url_for("login"))
+
+
+@app.errorhandler(sqlite3.Error)
+def handle_database_error(error):
+    app.logger.exception("Database error while handling a request", exc_info=error)
+    return render_template("database_error.html"), 503
 
 
 # Initialize database for both direct and WSGI application startup

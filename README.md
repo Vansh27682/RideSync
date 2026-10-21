@@ -1,6 +1,12 @@
 # RideSync
 A bike rental management system designed to simplify campus mobility through easy booking and efficient fleet management, developed using DevOps and SCM practices.
 
+## Vehicles
+
+Signed-in users can view the seeded fleet at `/vehicles`. On startup, the
+application creates the vehicle table and seeds the default fleet if it is
+empty. Run `python seed_vehicles.py` to safely add any missing default vehicles.
+
 ## Account recovery setup
 
 Registration requires a unique email address and Indian mobile number. Enter
