@@ -27,13 +27,32 @@ def init_db():
 
     connection.execute("""
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            role TEXT NOT NULL DEFAULT 'student'
-        )
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    username TEXT UNIQUE,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'student'
+    )
     """)
+    
+    columns = [
+        row["name"]
+        for row in connection.execute("PRAGMA table_info(users)").fetchall()
+    ]
+
+    if "username" not in columns:
+        connection.execute("ALTER TABLE users ADD COLUMN username TEXT")
+    
+    if "phone" not in columns:
+        connection.execute("ALTER TABLE users ADD COLUMN phone TEXT")
+
+
+    connection.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username
+        ON users(username)
+    """)
+
 
     connection.execute("""
         CREATE TABLE IF NOT EXISTS vehicles (
@@ -48,41 +67,6 @@ def init_db():
             image TEXT
         )
     """)
-    vehicle_count = connection.execute(
-        "SELECT COUNT(*) FROM vehicles"
-    ).fetchone()[0]
-
-    if vehicle_count == 0:
-        vehicles = [
-            ("Activa 6G", "Scooter", "Honda", "6G", "UK07RS1001", 40, "available", None),
-            ("Jupiter", "Scooter", "TVS", "ZX", "UK07RS1002", 40, "available", None),
-            ("Access 125", "Scooter", "Suzuki", "125", "UK07RS1003", 45, "available", None),
-            ("Ntorq 125", "Scooter", "TVS", "Race Edition", "UK07RS1004", 50, "available", None),
-            ("Dio", "Scooter", "Honda", "Standard", "UK07RS1005", 40, "available", None),
-            ("Pleasure Plus", "Scooter", "Hero", "XTEC", "UK07RS1006", 40, "available", None),
-            ("Destini 125", "Scooter", "Hero", "XTEC", "UK07RS1007", 45, "available", None),
-            ("RayZR 125", "Scooter", "Yamaha", "Fi Hybrid", "UK07RS1008", 50, "available", None),
-            ("Avenis 125", "Scooter", "Suzuki", "Standard", "UK07RS1009", 45, "available", None),
-            ("Fascino 125", "Scooter", "Yamaha", "Fi Hybrid", "UK07RS1010", 45, "available", None),
-            ("Activa 125", "Scooter", "Honda", "H-Smart", "UK07RS1011", 50, "available", None),
-            ("Jupiter 125", "Scooter", "TVS", "Disc", "UK07RS1012", 50, "available", None),
-
-            ("Pulsar 150", "Bike", "Bajaj", "150", "UK07RS2001", 65, "available", None),
-            ("Apache RTR 160", "Bike", "TVS", "160 4V", "UK07RS2002", 75, "available", None),
-            ("Splendor Plus", "Bike", "Hero", "XTEC", "UK07RS2003", 55, "available", None),
-            ("FZ-S", "Bike", "Yamaha", "FI V4", "UK07RS2004", 75, "available", None),
-            ("Hunter 350", "Bike", "Royal Enfield", "Metro", "UK07RS2005", 100, "available", None),
-            ("Classic 350", "Bike", "Royal Enfield", "Classic", "UK07RS2006", 110, "available", None),
-            ("Pulsar NS200", "Bike", "Bajaj", "NS200", "UK07RS2007", 90, "available", None),
-            ("Apache RTR 200", "Bike", "TVS", "4V", "UK07RS2008", 90, "available", None)
-        ]
-
-        connection.executemany("""
-            INSERT INTO vehicles
-            (name, type, brand, model, registration_number,
-             price_per_hour, status, image)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, vehicles)
 
 
     connection.commit()
@@ -126,103 +110,113 @@ def vehicles():
     )
 
 
-# REGISTER
+#register 
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-
     message = None
 
     if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        username = request.form.get("username", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        phone = request.form.get("phone", "").strip()
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
 
-        name = request.form["name"].strip()
-        email = request.form["email"].strip().lower()
-        password = request.form["password"]
-        confirm_password = request.form["confirm_password"]
+        if not all([name, username, email, phone, password, confirm_password]):
+            message = "All fields are required."
 
-        # Check whether passwords match
-        if password != confirm_password:
+        elif password != confirm_password:
             message = "Passwords do not match."
 
-        # Basic password validation
-        elif len(password) < 6:
-            message = "Password must contain at least 6 characters."
+        elif (
+            len(password) < 8
+            or not any(char.isalpha() for char in password)
+            or not any(char.isdigit() for char in password)
+            or not any(not char.isalnum() for char in password)
+        ):
+            message = "Password must contain at least 8 characters, including a letter, number and special character."
 
         else:
-            connection = get_db_connection()
+            phone_digits = phone.replace(" ", "").replace("-", "")
 
-            # Check whether email already exists
-            existing_user = connection.execute(
-                "SELECT * FROM users WHERE email = ?",
-                (email,)
-            ).fetchone()
+            if phone_digits.startswith("+91"):
+                phone_digits = phone_digits[3:]
 
-            if existing_user:
-                message = "An account with this email already exists."
+            if (
+                len(phone_digits) != 10
+                or not phone_digits.isdigit()
+                or phone_digits[0] not in "6789"
+            ):
+                message = "Enter a valid Indian mobile number."
 
             else:
-                # Hash password before storing it
-                hashed_password = generate_password_hash(password)
+                normalized_phone = "+91" + phone_digits
+                connection = get_db_connection()
 
-                connection.execute(
-                    """
-                    INSERT INTO users (name, email, password)
-                    VALUES (?, ?, ?)
-                    """,
-                    (name, email, hashed_password)
-                )
+                existing_user = connection.execute(
+                    "SELECT id FROM users WHERE email = ? OR username = ?",
+                    (email, username)
+                ).fetchone()
 
-                connection.commit()
-                connection.close()
+                if existing_user:
+                    message = "An account with this email or username already exists."
+                    connection.close()
 
-                # Registration successful → Login page
-                return redirect(url_for("login"))
+                else:
+                    hashed_password = generate_password_hash(password)
 
-            connection.close()
+                    connection.execute(
+                        """
+                        INSERT INTO users (name, username, email, phone, password)
+                        VALUES (?, ?, ?, ?, ?)
+                        """,
+                        (name, username, email, normalized_phone, hashed_password)
+                    )
 
-    return render_template(
-        "register.html",
-        message=message
-    )
+                    connection.commit()
+                    connection.close()
+
+                    return redirect(url_for("login"))
+
+    return render_template("register.html", message=message)
 
 
 # LOGIN
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-
     message = None
 
     if request.method == "POST":
+        identifier = request.form.get("identifier", "").strip()
+        password = request.form.get("password", "")
 
-        email = request.form["email"].strip().lower()
-        password = request.form["password"]
-
-        connection = get_db_connection()
-
-        user = connection.execute(
-            "SELECT * FROM users WHERE email = ?",
-            (email,)
-        ).fetchone()
-
-        connection.close()
-
-        # Check email and hashed password
-        if user and check_password_hash(user["password"], password):
-
-            session["user_id"] = user["id"]
-            session["user_name"] = user["name"]
-            session["role"] = user["role"]
-
-            return redirect(url_for("home"))
-
+        if not identifier or not password:
+            message = "Username or email and password are required."
         else:
-            message = "Invalid email or password."
+            connection = get_db_connection()
 
-    return render_template(
-        "login.html",
-        message=message
-    )
+            user = connection.execute(
+                """
+                SELECT * FROM users
+                WHERE LOWER(email) = ? OR LOWER(username) = ?
+                """,
+                (identifier.lower(), identifier.lower())
+            ).fetchone()
+            connection.close()
+
+            if user and check_password_hash(user["password"], password):
+                session["user_id"] = user["id"]
+                session["user_name"] = user["name"]
+                session["role"] = user["role"]
+
+                return redirect(url_for("home"))
+            else:
+                message = "Invalid email or password."
+
+    return render_template("login.html", message=message)
 
 
 # LOGOUT
