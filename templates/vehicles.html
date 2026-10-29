@@ -38,7 +38,9 @@
             </p>
 
             {% if vehicle["status"] == "available" %}
-                <button>Book Now</button>
+                <a href="{{ url_for('booking.book_vehicle', vehicle_id=vehicle['id']) }}">
+                    <button type="button">Book Now</button>
+                 </a>
             {% else %}
                 <button disabled>Not Available</button>
             {% endif %}

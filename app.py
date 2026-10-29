@@ -1,41 +1,45 @@
-from flask import Flask, render_template, request, redirect, url_for, session
-import sqlite3
+
+from flask import Flask, render_template, request, redirect, url_for, session, flash
+import database
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
+DATABASE = database.DATABASE
+
+
+def get_db_connection():
+    database.DATABASE = DATABASE
+    return database.get_db_connection()
+
 app = Flask(__name__)
+
+from booking import booking_bp
+
+app.register_blueprint(booking_bp)
+
 
 # Secret key is required for Flask sessions
 app.secret_key = "ridesync-dev-secret-key"
 
-# SQLite database file
-DATABASE = "ridesync.db"
-
-
-# DATABASE CONNECTION
-
-def get_db_connection():
-    connection = sqlite3.connect(DATABASE)
-    connection.row_factory = sqlite3.Row
-    return connection
 
 
 # CREATE DATABASE TABLE
+
 
 def init_db():
     connection = get_db_connection()
 
     connection.execute("""
         CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    username TEXT UNIQUE,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'student'
-    )
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            username TEXT UNIQUE,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'student'
+        )
     """)
-    
+
     columns = [
         row["name"]
         for row in connection.execute("PRAGMA table_info(users)").fetchall()
@@ -43,16 +47,14 @@ def init_db():
 
     if "username" not in columns:
         connection.execute("ALTER TABLE users ADD COLUMN username TEXT")
-    
+
     if "phone" not in columns:
         connection.execute("ALTER TABLE users ADD COLUMN phone TEXT")
-
 
     connection.execute("""
         CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username
         ON users(username)
     """)
-
 
     connection.execute("""
         CREATE TABLE IF NOT EXISTS vehicles (
@@ -68,10 +70,24 @@ def init_db():
         )
     """)
 
+    # ADD THE BOOKINGS TABLE HERE
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS bookings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            vehicle_id INTEGER NOT NULL,
+            start_time TEXT NOT NULL,
+            end_time TEXT NOT NULL,
+            total_price REAL NOT NULL,
+            status TEXT NOT NULL DEFAULT 'confirmed',
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
+        )
+    """)
 
     connection.commit()
     connection.close()
-
 
 # HOME
 
