@@ -6,9 +6,24 @@
 
 <body>
 
+    
+    <div style="display: flex; justify-content: space-between; align-items: center;">
     <h1>RideSync Vehicles</h1>
 
-    <p>Available bikes and scooters</p>
+    <div style="position: relative;">
+        <button type="button" onclick="document.getElementById('navMenu').hidden = !document.getElementById('navMenu').hidden">
+            ☰ Menu
+        </button>
+
+        <div id="navMenu" hidden style="position: absolute; right: 0; background: white; border: 1px solid #ccc; padding: 12px; min-width: 140px;">
+            <p><a href="{{ url_for('booking.my_bookings') }}">My Bookings</a></p>
+            <p><a href="{{ url_for('home') }}">Back to Home</a></p>
+        </div>
+    </div>
+</div>
+
+<p>Available bikes and scooters</p>
+
 
     <hr>
 
@@ -50,7 +65,6 @@
 
     {% endfor %}
 
-    <a href="{{ url_for('home') }}">Back to Home</a>
 
 </body>
 </html>
