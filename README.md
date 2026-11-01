@@ -45,3 +45,16 @@ if present, are hashed during migration. Existing account records are not
 deleted. By default, the app opens `ridesync.db` next to `app.py`, regardless
 of the directory from which the app is launched. Set `RIDESYNC_DATABASE` to
 use a different database file.
+
+## Admin vehicle management
+
+Users whose existing `users.role` is exactly `admin` can open `/admin` to
+manage the fleet. Admins can add, edit, and delete vehicles and set their
+status to `available` or `unavailable`. Registration numbers must be unique;
+vehicles with booking history cannot be deleted so that booking records remain
+intact. New public registrations continue to receive the regular student role.
+
+Admin access must be granted by a trusted operator; there is no public admin
+registration or role-promotion page. For local testing, register an account,
+then use a SQLite database client to update that account's `users.role` to
+`admin` before signing in again.
