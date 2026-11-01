@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} | RideSync</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="dashboard-body">
+    <header class="topbar">
+        <div>
+            <h1>RideSync</h1>
+            <p>Admin vehicle management</p>
+        </div>
+        <div class="user-area">
+            <a href="{{ url_for('admin.dashboard') }}">Admin dashboard</a>
+            <a href="{{ url_for('logout') }}" class="top-logout">Logout</a>
+        </div>
+    </header>
+
+    <main class="admin-main admin-form-main">
+        <section class="admin-form-card">
+            <h2>{{ title }}</h2>
+            {% if error %}
+                <p class="error-message">{{ error }}</p>
+            {% endif %}
+            <form method="POST">
+                <label for="name">Name *</label>
+                <input id="name" name="name" value="{{ vehicle['name'] }}" required>
+
+                <label for="type">Type *</label>
+                <input id="type" name="type" value="{{ vehicle['type'] }}" required>
+
+                <label for="brand">Brand *</label>
+                <input id="brand" name="brand" value="{{ vehicle['brand'] }}" required>
+
+                <label for="model">Model *</label>
+                <input id="model" name="model" value="{{ vehicle['model'] }}" required>
+
+                <label for="registration_number">Registration number *</label>
+                <input id="registration_number" name="registration_number" value="{{ vehicle['registration_number'] }}" required>
+
+                <label for="price_per_hour">Price per hour (Rs.) *</label>
+                <input id="price_per_hour" name="price_per_hour" type="number" min="0.01" step="0.01" value="{{ vehicle['price_per_hour'] }}" required>
+
+                <label for="status">Status *</label>
+                <select id="status" name="status" required>
+                    {% for status in statuses %}
+                        <option value="{{ status }}" {% if vehicle['status'] == status %}selected{% endif %}>{{ status|capitalize }}</option>
+                    {% endfor %}
+                </select>
+
+                <label for="image">Image path (optional)</label>
+                <input id="image" name="image" value="{{ vehicle['image'] or '' }}">
+
+                <div class="admin-form-actions">
+                    <button type="submit">{{ title }}</button>
+                    <a href="{{ url_for('admin.vehicles') }}">Cancel</a>
+                </div>
+            </form>
+        </section>
+    </main>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Vehicles | RideSync</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="dashboard-body">
+    <header class="topbar">
+        <div>
+            <h1>RideSync</h1>
+            <p>Admin vehicle management</p>
+        </div>
+        <div class="user-area">
+            <a href="{{ url_for('admin.dashboard') }}">Admin dashboard</a>
+            <a href="{{ url_for('logout') }}" class="top-logout">Logout</a>
+        </div>
+    </header>
+
+    <main class="admin-main">
+        <div class="admin-page-heading">
+            <div>
+                <h2>Vehicles</h2>
+                <p>Review and update the fleet inventory.</p>
+            </div>
+            <a class="admin-primary-link" href="{{ url_for('admin.add_vehicle') }}">Add vehicle</a>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <p class="{{ 'success-message' if category == 'success' else 'error-message' }}">{{ message }}</p>
+            {% endfor %}
+        {% endwith %}
+
+        {% if vehicles %}
+            <div class="admin-vehicle-list">
+                {% for vehicle in vehicles %}
+                    <article class="admin-vehicle-card">
+                        <div class="admin-vehicle-details">
+                            <h3>{{ vehicle["brand"] }} {{ vehicle["name"] }}</h3>
+                            <p>{{ vehicle["type"] }} · {{ vehicle["model"] }}</p>
+                            <p>Registration: {{ vehicle["registration_number"] }}</p>
+                            <p>Price: Rs. {{ "%.2f"|format(vehicle["price_per_hour"]) }} / hour</p>
+                            <p>Status: <strong>{{ vehicle["status"] }}</strong></p>
+                        </div>
+                        <div class="admin-vehicle-actions">
+                            <a class="admin-secondary-link" href="{{ url_for('admin.edit_vehicle', vehicle_id=vehicle['id']) }}">Edit</a>
+                            <form method="POST" action="{{ url_for('admin.change_vehicle_status', vehicle_id=vehicle['id']) }}">
+                                <label for="status-{{ vehicle['id'] }}">Availability</label>
+                                <select id="status-{{ vehicle['id'] }}" name="status">
+                                    {% for status in ("available", "unavailable") %}
+                                        <option value="{{ status }}" {% if vehicle["status"] == status %}selected{% endif %}>{{ status|capitalize }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit">Update status</button>
+                            </form>
+                            <form method="POST"
+                                  action="{{ url_for('admin.delete_vehicle', vehicle_id=vehicle['id']) }}"
+                                  onsubmit="return confirm('Delete this vehicle? Vehicles with booking history cannot be deleted.');">
+                                <button class="admin-danger-button" type="submit">Delete</button>
+                            </form>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <section class="admin-empty-state">
+                <h3>No vehicles yet</h3>
+                <p>Add the first vehicle to start managing the fleet.</p>
+                <a href="{{ url_for('admin.add_vehicle') }}">Add vehicle</a>
+            </section>
+        {% endif %}
+    </main>
+</body>
+</html>

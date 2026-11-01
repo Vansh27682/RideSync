@@ -25,6 +25,11 @@ def book_vehicle(vehicle_id):
         connection.close()
         return "Vehicle not found", 404
 
+    if vehicle["status"] != "available":
+        connection.close()
+        flash("This vehicle is not currently available for booking.", "error")
+        return redirect(url_for("vehicles"))
+
     if request.method == "POST":
         start_value = request.form.get("start_time", "").strip()
         end_value = request.form.get("end_time", "").strip()

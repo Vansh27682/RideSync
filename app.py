@@ -14,8 +14,10 @@ def get_db_connection():
 app = Flask(__name__)
 
 from booking import booking_bp
+from admin import admin_bp
 
 app.register_blueprint(booking_bp)
+app.register_blueprint(admin_bp)
 
 
 # Secret key is required for Flask sessions
@@ -94,6 +96,9 @@ def init_db():
 @app.route("/")
 def home():
     if "user_id" in session:
+        if session.get("role") == "admin":
+            return redirect(url_for("admin.dashboard"))
+
         return f"""
         <h1>Welcome to RideSync, {session['user_name']}!</h1>
         <p>You are successfully logged in.</p>
