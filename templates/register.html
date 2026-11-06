@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -31,22 +32,15 @@
 
         <h2>Create Account</h2>
 
-
         {% if message %}
-
         <p class="error-message">
             {{ message }}
         </p>
-
         {% endif %}
-
 
         <form method="POST" action="{{ url_for('register') }}">
 
-            <label for="name">
-                Full Name
-            </label>
-
+            <label for="name">Full Name</label>
             <input
                 type="text"
                 id="name"
@@ -55,11 +49,7 @@
                 required
             >
 
-
-            <label for="username">
-                Username
-            </label>
-
+            <label for="username">Username</label>
             <input
                 type="text"
                 id="username"
@@ -68,11 +58,7 @@
                 required
             >
 
-
-            <label for="email">
-                Email
-            </label>
-
+            <label for="email">Email</label>
             <input
                 type="email"
                 id="email"
@@ -82,11 +68,7 @@
                 required
             >
 
-
-            <label for="phone">
-                Indian Mobile Number
-            </label>
-
+            <label for="phone">Indian Mobile Number</label>
             <input
                 type="tel"
                 id="phone"
@@ -94,15 +76,28 @@
                 placeholder="9876543210 or +919876543210"
                 autocomplete="tel"
                 pattern="(\+91)?[6-9][0-9]{9}"
-                title="Enter a 10-digit Indian mobile number starting with 6-9, optionally prefixed with +91"
+                title="Enter a valid 10-digit Indian mobile number"
                 required
             >
 
+            <label for="role">Account Type</label>
+            <select id="role" name="role" required>
+                <option value="customer" selected>Customer</option>
+                <option value="admin">Admin</option>
+            </select>
 
-            <label for="password">
-                Password
-            </label>
+            <div id="adminCodeField" hidden>
+                <label for="admin_code">Admin Registration Code</label>
+                <input
+                    type="password"
+                    id="admin_code"
+                    name="admin_code"
+                    placeholder="Enter admin registration code"
+                    autocomplete="off"
+                >
+            </div>
 
+            <label for="password">Password</label>
             <input
                 type="password"
                 id="password"
@@ -117,11 +112,7 @@
                 number and special character.
             </p>
 
-
-            <label for="confirm_password">
-                Confirm Password
-            </label>
-
+            <label for="confirm_password">Confirm Password</label>
             <input
                 type="password"
                 id="confirm_password"
@@ -131,28 +122,41 @@
                 required
             >
 
-
             <button type="submit">
                 Create Account
             </button>
 
         </form>
 
-
         <p class="switch-text">
-
             Already have an account?
-
-            <a href="/login">
-                Login
-            </a>
-
+            <a href="/login">Login</a>
         </p>
 
     </div>
 
 </div>
 
-</body>
+<script>
+    const roleSelect = document.getElementById("role");
+    const adminCodeField = document.getElementById("adminCodeField");
+    const adminCodeInput = document.getElementById("admin_code");
 
+    function toggleAdminCode() {
+        const isAdmin = roleSelect.value === "admin";
+
+        adminCodeField.hidden = !isAdmin;
+        adminCodeInput.required = isAdmin;
+
+        if (!isAdmin) {
+            adminCodeInput.value = "";
+        }
+    }
+
+    roleSelect.addEventListener("change", toggleAdminCode);
+
+    toggleAdminCode();
+</script>
+
+</body>
 </html>

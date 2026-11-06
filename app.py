@@ -1,4 +1,7 @@
 
+import os
+import hmac
+
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import database
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -11,6 +14,7 @@ def get_db_connection():
     database.DATABASE = DATABASE
     return database.get_db_connection()
 
+
 app = Flask(__name__)
 
 from booking import booking_bp
@@ -21,12 +25,13 @@ app.register_blueprint(admin_bp)
 
 
 # Secret key is required for Flask sessions
-app.secret_key = "ridesync-dev-secret-key"
-
+app.secret_key = os.environ.get(
+    "FLASK_SECRET_KEY",
+    "ridesync-dev-secret-key"
+)
 
 
 # CREATE DATABASE TABLE
-
 
 def init_db():
     connection = get_db_connection()
@@ -38,7 +43,7 @@ def init_db():
             username TEXT UNIQUE,
             email TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
-            role TEXT NOT NULL DEFAULT 'student'
+            role TEXT NOT NULL DEFAULT 'customer'
         )
     """)
 
@@ -58,6 +63,13 @@ def init_db():
         ON users(username)
     """)
 
+    # Update existing accounts to the new customer role
+    connection.execute("""
+        UPDATE users
+        SET role = 'customer'
+        WHERE role = 'student'
+    """)
+
     connection.execute("""
         CREATE TABLE IF NOT EXISTS vehicles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,7 +84,7 @@ def init_db():
         )
     """)
 
-    # ADD THE BOOKINGS TABLE HERE
+    # BOOKINGS TABLE
     connection.execute("""
         CREATE TABLE IF NOT EXISTS bookings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,6 +102,7 @@ def init_db():
 
     connection.commit()
     connection.close()
+
 
 # HOME
 
@@ -109,6 +122,8 @@ def home():
         """
 
     return redirect(url_for("login"))
+
+
 # VEHICLES
 
 @app.route("/vehicles")
@@ -131,7 +146,7 @@ def vehicles():
     )
 
 
-#register 
+# REGISTER
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -145,8 +160,14 @@ def register():
         password = request.form.get("password", "")
         confirm_password = request.form.get("confirm_password", "")
 
+        role = request.form.get("role", "customer").strip().lower()
+        admin_code = request.form.get("admin_code", "")
+
         if not all([name, username, email, phone, password, confirm_password]):
             message = "All fields are required."
+
+        elif role not in ["customer", "admin"]:
+            message = "Invalid account type selected."
 
         elif password != confirm_password:
             message = "Passwords do not match."
@@ -158,6 +179,15 @@ def register():
             or not any(not char.isalnum() for char in password)
         ):
             message = "Password must contain at least 8 characters, including a letter, number and special character."
+
+        elif role == "admin" and not os.environ.get("RIDESYNC_ADMIN_CODE"):
+            message = "Admin registration is currently unavailable."
+
+        elif role == "admin" and not hmac.compare_digest(
+            admin_code,
+            os.environ.get("RIDESYNC_ADMIN_CODE", "")
+        ):
+            message = "Invalid admin registration code."
 
         else:
             phone_digits = phone.replace(" ", "").replace("-", "")
@@ -190,10 +220,18 @@ def register():
 
                     connection.execute(
                         """
-                        INSERT INTO users (name, username, email, phone, password)
-                        VALUES (?, ?, ?, ?, ?)
+                        INSERT INTO users
+                        (name, username, email, phone, password, role)
+                        VALUES (?, ?, ?, ?, ?, ?)
                         """,
-                        (name, username, email, normalized_phone, hashed_password)
+                        (
+                            name,
+                            username,
+                            email,
+                            normalized_phone,
+                            hashed_password,
+                            role
+                        )
                     )
 
                     connection.commit()
@@ -216,6 +254,7 @@ def login():
 
         if not identifier or not password:
             message = "Username or email and password are required."
+
         else:
             connection = get_db_connection()
 
@@ -226,6 +265,7 @@ def login():
                 """,
                 (identifier.lower(), identifier.lower())
             ).fetchone()
+
             connection.close()
 
             if user and check_password_hash(user["password"], password):
@@ -234,6 +274,7 @@ def login():
                 session["role"] = user["role"]
 
                 return redirect(url_for("home"))
+
             else:
                 message = "Invalid email or password."
 
