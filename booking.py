@@ -14,7 +14,6 @@ def book_vehicle(vehicle_id):
         return redirect(url_for("login"))
 
     connection = database.get_db_connection()
-    
 
     vehicle = connection.execute(
         "SELECT * FROM vehicles WHERE id = ?",
@@ -93,6 +92,8 @@ def book_vehicle(vehicle_id):
     return render_template("book_vehicle.html", vehicle=vehicle)
 
 
+# MY BOOKINGS
+
 @booking_bp.route("/my-bookings")
 def my_bookings():
     if "user_id" not in session:
@@ -102,7 +103,8 @@ def my_bookings():
 
     bookings = connection.execute(
         """
-        SELECT bookings.*, vehicles.brand, vehicles.name, vehicles.registration_number
+        SELECT bookings.*, vehicles.brand, vehicles.name,
+               vehicles.registration_number
         FROM bookings
         JOIN vehicles ON bookings.vehicle_id = vehicles.id
         WHERE bookings.user_id = ?
@@ -113,8 +115,110 @@ def my_bookings():
 
     connection.close()
 
-    return render_template("my_bookings.html", bookings=bookings)
+    return render_template(
+        "my_bookings.html",
+        bookings=bookings,
+        is_admin=False
+    )
 
+
+# ADMIN RENTAL MANAGEMENT
+
+@booking_bp.route("/manage-rentals")
+def manage_rentals():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    if session.get("role") != "admin":
+        flash("You are not authorized to access this page.", "error")
+        return redirect(url_for("home"))
+
+    connection = database.get_db_connection()
+
+    bookings = connection.execute(
+        """
+        SELECT bookings.*, vehicles.brand, vehicles.name,
+               vehicles.registration_number, users.name AS customer_name
+        FROM bookings
+        JOIN vehicles ON bookings.vehicle_id = vehicles.id
+        JOIN users ON bookings.user_id = users.id
+        ORDER BY bookings.created_at DESC
+        """
+    ).fetchall()
+
+    connection.close()
+
+    return render_template(
+        "my_bookings.html",
+        bookings=bookings,
+        is_admin=True
+    )
+
+
+# COMPLETE / RETURN RENTAL
+
+@booking_bp.route("/complete-booking/<int:booking_id>", methods=["POST"])
+def complete_booking(booking_id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    if session.get("role") != "admin":
+        flash("Only an admin can mark a rental as completed.", "error")
+        return redirect(url_for("home"))
+
+    connection = database.get_db_connection()
+
+    booking = connection.execute(
+        """
+        SELECT id, end_time, status
+        FROM bookings
+        WHERE id = ?
+        """,
+        (booking_id,)
+    ).fetchone()
+
+    if not booking:
+        connection.close()
+        flash("Booking not found.", "error")
+        return redirect(url_for("booking.manage_rentals"))
+
+    if booking["status"] != "confirmed":
+        connection.close()
+        flash("This booking cannot be marked as completed.", "error")
+        return redirect(url_for("booking.manage_rentals"))
+
+    try:
+        end_time = datetime.strptime(
+            booking["end_time"],
+            "%Y-%m-%dT%H:%M"
+        )
+    except ValueError:
+        connection.close()
+        flash("The booking has an invalid end time.", "error")
+        return redirect(url_for("booking.manage_rentals"))
+
+    if datetime.now() < end_time:
+        connection.close()
+        flash("The rental period has not ended yet.", "error")
+        return redirect(url_for("booking.manage_rentals"))
+
+    connection.execute(
+        """
+        UPDATE bookings
+        SET status = 'completed'
+        WHERE id = ? AND status = 'confirmed'
+        """,
+        (booking_id,)
+    )
+
+    connection.commit()
+    connection.close()
+
+    flash("Rental marked as completed and vehicle returned successfully.", "success")
+    return redirect(url_for("booking.manage_rentals"))
+
+
+# CANCEL BOOKING
 
 @booking_bp.route("/cancel-booking/<int:booking_id>", methods=["POST"])
 def cancel_booking(booking_id):
