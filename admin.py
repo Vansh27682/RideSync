@@ -1,7 +1,7 @@
+
 from contextlib import closing
 from functools import wraps
 import math
-import sqlite3
 
 from flask import (
     Blueprint,
@@ -33,7 +33,7 @@ def admin_required(view):
                     "SELECT role FROM users WHERE id = ?",
                     (session["user_id"],),
                 ).fetchone()
-        except sqlite3.Error:
+        except database.DatabaseError:
             current_app.logger.exception("Unable to verify admin access")
             return render_template(
                 "database_error.html",
@@ -76,6 +76,7 @@ def _validate_vehicle(vehicle):
         "registration_number",
         "price_per_hour",
     )
+
     if any(not vehicle[field] for field in required_fields):
         return None, "All required vehicle fields must be filled in."
 
@@ -122,7 +123,7 @@ def vehicles():
             vehicle_list = connection.execute(
                 "SELECT * FROM vehicles ORDER BY type, id"
             ).fetchall()
-    except sqlite3.Error:
+    except database.DatabaseError:
         return _database_unavailable()
 
     return render_template("admin_vehicles.html", vehicles=vehicle_list)
@@ -145,6 +146,7 @@ def add_vehicle():
     if request.method == "POST":
         vehicle = _vehicle_form_data()
         cleaned, error = _validate_vehicle(vehicle)
+
         if error:
             return render_template(
                 "admin_vehicle_form.html",
@@ -192,7 +194,8 @@ def add_vehicle():
                     ),
                 )
                 connection.commit()
-        except sqlite3.IntegrityError:
+
+        except database.IntegrityError:
             current_app.logger.info(
                 "Vehicle creation rejected by a database constraint"
             )
@@ -203,7 +206,8 @@ def add_vehicle():
                 title="Add Vehicle",
                 error="A vehicle with that registration number already exists.",
             ), 400
-        except sqlite3.Error:
+
+        except database.DatabaseError:
             return _database_unavailable()
 
         flash("Vehicle added successfully.", "success")
@@ -226,16 +230,19 @@ def edit_vehicle(vehicle_id):
                 "SELECT * FROM vehicles WHERE id = ?",
                 (vehicle_id,),
             ).fetchone()
-    except sqlite3.Error:
+
+    except database.DatabaseError:
         return _database_unavailable()
 
     if row is None:
         return _vehicle_not_found()
 
     vehicle = dict(row)
+
     if request.method == "POST":
         vehicle = _vehicle_form_data()
         cleaned, error = _validate_vehicle(vehicle)
+
         if error:
             return render_template(
                 "admin_vehicle_form.html",
@@ -284,10 +291,13 @@ def edit_vehicle(vehicle_id):
                         vehicle_id,
                     ),
                 )
+
                 if cursor.rowcount == 0:
                     return _vehicle_not_found()
+
                 connection.commit()
-        except sqlite3.IntegrityError:
+
+        except database.IntegrityError:
             current_app.logger.info(
                 "Vehicle update rejected by a database constraint"
             )
@@ -298,7 +308,8 @@ def edit_vehicle(vehicle_id):
                 title="Edit Vehicle",
                 error="A vehicle with that registration number already exists.",
             ), 400
-        except sqlite3.Error:
+
+        except database.DatabaseError:
             return _database_unavailable()
 
         flash("Vehicle updated successfully.", "success")
@@ -316,12 +327,14 @@ def edit_vehicle(vehicle_id):
 @admin_required
 def change_vehicle_status(vehicle_id):
     status = request.form.get("status", "").strip()
+
     try:
         with closing(database.get_db_connection()) as connection:
             vehicle = connection.execute(
                 "SELECT id FROM vehicles WHERE id = ?",
                 (vehicle_id,),
             ).fetchone()
+
             if vehicle is None:
                 return _vehicle_not_found()
 
@@ -329,12 +342,13 @@ def change_vehicle_status(vehicle_id):
                 flash("Choose a valid vehicle status.", "error")
                 return redirect(url_for("admin.vehicles"))
 
-            cursor = connection.execute(
+            connection.execute(
                 "UPDATE vehicles SET status = ? WHERE id = ?",
                 (status, vehicle_id),
             )
             connection.commit()
-    except sqlite3.Error:
+
+    except database.DatabaseError:
         return _database_unavailable()
 
     flash("Vehicle status updated.", "success")
@@ -346,11 +360,21 @@ def change_vehicle_status(vehicle_id):
 def delete_vehicle(vehicle_id):
     try:
         with closing(database.get_db_connection()) as connection:
-            connection.execute("BEGIN IMMEDIATE")
+
+            if database.is_postgres():
+                connection.execute("BEGIN")
+                connection.execute(
+                    "SELECT id FROM vehicles WHERE id = ? FOR UPDATE",
+                    (vehicle_id,),
+                )
+            else:
+                connection.execute("BEGIN IMMEDIATE")
+
             vehicle = connection.execute(
                 "SELECT id FROM vehicles WHERE id = ?",
                 (vehicle_id,),
             ).fetchone()
+
             if vehicle is None:
                 connection.rollback()
                 return _vehicle_not_found()
@@ -359,6 +383,7 @@ def delete_vehicle(vehicle_id):
                 "SELECT 1 FROM bookings WHERE vehicle_id = ? LIMIT 1",
                 (vehicle_id,),
             ).fetchone()
+
             if bookings:
                 connection.rollback()
                 flash(
@@ -372,7 +397,8 @@ def delete_vehicle(vehicle_id):
                 (vehicle_id,),
             )
             connection.commit()
-    except sqlite3.Error:
+
+    except database.DatabaseError:
         return _database_unavailable()
 
     flash("Vehicle deleted successfully.", "success")

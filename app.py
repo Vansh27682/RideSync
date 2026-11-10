@@ -2,7 +2,15 @@
 import os
 import hmac
 
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    session,
+    flash,
+)
 import database
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -24,80 +32,129 @@ app.register_blueprint(booking_bp)
 app.register_blueprint(admin_bp)
 
 
-# Secret key is required for Flask sessions
+# SECRET KEY
+
 app.secret_key = os.environ.get(
     "FLASK_SECRET_KEY",
     "ridesync-dev-secret-key"
 )
 
 
-# CREATE DATABASE TABLE
+# DATABASE INITIALIZATION
 
 def init_db():
     connection = get_db_connection()
 
-    connection.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            username TEXT UNIQUE,
-            email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            role TEXT NOT NULL DEFAULT 'customer'
-        )
-    """)
+    if database.is_postgres():
 
-    columns = [
-        row["name"]
-        for row in connection.execute("PRAGMA table_info(users)").fetchall()
-    ]
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                username TEXT UNIQUE,
+                email TEXT UNIQUE NOT NULL,
+                phone TEXT,
+                password TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'customer'
+            )
+        """)
 
-    if "username" not in columns:
-        connection.execute("ALTER TABLE users ADD COLUMN username TEXT")
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS vehicles (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                type TEXT NOT NULL,
+                brand TEXT NOT NULL,
+                model TEXT NOT NULL,
+                registration_number TEXT UNIQUE NOT NULL,
+                price_per_hour DOUBLE PRECISION NOT NULL,
+                status TEXT NOT NULL DEFAULT 'available',
+                image TEXT
+            )
+        """)
 
-    if "phone" not in columns:
-        connection.execute("ALTER TABLE users ADD COLUMN phone TEXT")
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS bookings (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id),
+                vehicle_id INTEGER NOT NULL REFERENCES vehicles(id),
+                start_time TEXT NOT NULL,
+                end_time TEXT NOT NULL,
+                total_price DOUBLE PRECISION NOT NULL,
+                status TEXT NOT NULL DEFAULT 'confirmed',
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
 
-    connection.execute("""
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username
-        ON users(username)
-    """)
+    else:
 
-    # Update existing accounts to the new customer role
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                username TEXT UNIQUE,
+                email TEXT UNIQUE NOT NULL,
+                phone TEXT,
+                password TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'customer'
+            )
+        """)
+
+        columns = [
+            row["name"]
+            for row in connection.execute(
+                "PRAGMA table_info(users)"
+            ).fetchall()
+        ]
+
+        if "username" not in columns:
+            connection.execute(
+                "ALTER TABLE users ADD COLUMN username TEXT"
+            )
+
+        if "phone" not in columns:
+            connection.execute(
+                "ALTER TABLE users ADD COLUMN phone TEXT"
+            )
+
+        connection.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username
+            ON users(username)
+        """)
+
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS vehicles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                type TEXT NOT NULL,
+                brand TEXT NOT NULL,
+                model TEXT NOT NULL,
+                registration_number TEXT UNIQUE NOT NULL,
+                price_per_hour REAL NOT NULL,
+                status TEXT NOT NULL DEFAULT 'available',
+                image TEXT
+            )
+        """)
+
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS bookings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                vehicle_id INTEGER NOT NULL,
+                start_time TEXT NOT NULL,
+                end_time TEXT NOT NULL,
+                total_price REAL NOT NULL,
+                status TEXT NOT NULL DEFAULT 'confirmed',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
+            )
+        """)
+
     connection.execute("""
         UPDATE users
         SET role = 'customer'
         WHERE role = 'student'
-    """)
-
-    connection.execute("""
-        CREATE TABLE IF NOT EXISTS vehicles (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            type TEXT NOT NULL,
-            brand TEXT NOT NULL,
-            model TEXT NOT NULL,
-            registration_number TEXT UNIQUE NOT NULL,
-            price_per_hour REAL NOT NULL,
-            status TEXT NOT NULL DEFAULT 'available',
-            image TEXT
-        )
-    """)
-
-    # BOOKINGS TABLE
-    connection.execute("""
-        CREATE TABLE IF NOT EXISTS bookings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            vehicle_id INTEGER NOT NULL,
-            start_time TEXT NOT NULL,
-            end_time TEXT NOT NULL,
-            total_price REAL NOT NULL,
-            status TEXT NOT NULL DEFAULT 'confirmed',
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
-        )
     """)
 
     connection.commit()
@@ -285,9 +342,7 @@ def login():
 
 @app.route("/logout")
 def logout():
-
     session.clear()
-
     return redirect(url_for("login"))
 
 
