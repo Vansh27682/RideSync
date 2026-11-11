@@ -1,3 +1,4 @@
+
 from contextlib import closing
 
 from app import DEFAULT_VEHICLES, get_db_connection, init_db
@@ -5,13 +6,17 @@ from app import DEFAULT_VEHICLES, get_db_connection, init_db
 
 def seed_vehicles():
     init_db()
+
     with closing(get_db_connection()) as connection:
-        connection.executemany("""
-            INSERT OR IGNORE INTO vehicles
-                (name, type, brand, model, registration_number,
-                 price_per_hour, status, image)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, DEFAULT_VEHICLES)
+        for vehicle in DEFAULT_VEHICLES:
+            connection.execute("""
+                INSERT INTO vehicles
+                    (name, type, brand, model, registration_number,
+                     price_per_hour, status, image)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT DO NOTHING
+            """, vehicle)
+
         connection.commit()
 
         vehicles = connection.execute("""
@@ -26,6 +31,7 @@ def seed_vehicles():
             f"ID: {vehicle['id']} | {vehicle['name']} | {vehicle['type']} | "
             f"Rs.{vehicle['price_per_hour']}/hr | {vehicle['status']}"
         )
+
     print(f"\nTotal vehicles: {len(vehicles)}")
 
 
