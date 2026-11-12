@@ -1,212 +1,224 @@
-<!DOCTYPE html>
-<html lang="en">
 
-<head>
+{% extends "base.html" %}
 
-    <meta charset="UTF-8">
+{% block title %}Overview{% endblock %}
+{% block breadcrumb %}Overview{% endblock %}
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+{% block content %}
 
-    <title>Dashboard | RideSync</title>
-
-    <link
-        rel="stylesheet"
-        href="{{ url_for('static', filename='css/style.css') }}"
-    >
-
-</head>
-
-
-<body class="dashboard-body">
-
-
-<header class="topbar">
-
+<div class="welcome-row">
     <div>
-        <h1>RideSync</h1>
+        <div class="eyebrow">
+            <span class="eyebrow-line"></span>
+            YOUR RIDE, YOUR ROUTE
+        </div>
+        <h1>
+            Good to see you,
+            <span>{{ session.get('user_name', '').split(' ')[0] }}.</span>
+        </h1>
+        <p class="subheading">Where would you like to go today?</p>
+    </div>
+
+    <a class="button button-primary" href="{{ url_for('vehicles') }}">
+        Find a ride <span>↗</span>
+    </a>
+</div>
+
+<section class="hero-banner">
+    <div class="hero-grid"></div>
+
+    <div class="hero-content">
+        <div class="hero-tag">
+            <span>✦</span> RIDESYNC BIKE RENTALS
+        </div>
+
+        <h2>Your next journey<br>starts <em>here.</em></h2>
 
         <p>
-            Campus Bike Rental System
+            Choose your ride, select your time, and get moving with RideSync.
         </p>
+
+        <a class="button button-light" href="{{ url_for('vehicles') }}">
+            Explore the fleet <span>→</span>
+        </a>
     </div>
 
+    <div class="hero-visual">
+        <div class="hero-ring ring-one"></div>
+        <div class="hero-ring ring-two"></div>
+        <div class="hero-glow"></div>
+        <div class="hero-bike">🏍</div>
 
-    <div class="user-area">
-
-        <span>
-            {{ name }}
-        </span>
-
-        <a href="/logout" class="top-logout">
-            Logout
-        </a>
-
+        <div class="hero-chip">
+            <span class="live-dot"></span> READY WHEN YOU ARE
+        </div>
     </div>
 
-</header>
+    <div class="hero-index">01 <span>/</span> 03</div>
+</section>
 
+<div class="section-heading">
+    <div>
+        <div class="eyebrow">AT A GLANCE</div>
+        <h2>Your rental overview</h2>
+    </div>
 
-<div class="dashboard-layout">
+    <span class="updated-label">
+        <i></i> FLEET OVERVIEW
+    </span>
+</div>
 
+<div class="stats-grid">
 
-    <aside class="sidebar">
+    <article class="stat-card">
+        <div class="stat-top">
+            <span>Total fleet</span>
+            <span class="stat-icon">◈</span>
+        </div>
 
-        <a href="/" class="active">
-            Dashboard
-        </a>
+        <div class="stat-value">
+            {{ total_vehicles }}<small> vehicles</small>
+        </div>
 
-        <a href="{{ url_for('vehicles') }}">
-            Available Bikes
-        </a>
+        <div class="stat-foot">Registered vehicles</div>
+    </article>
 
-        <a href="#">
-            My Bookings
-        </a>
+    <article class="stat-card">
+        <div class="stat-top">
+            <span>Available now</span>
+            <span class="stat-icon green">↗</span>
+        </div>
 
-        <a href="#">
-            Booking History
-        </a>
+        <div class="stat-value">
+            {{ available_vehicles }}<small> available</small>
+        </div>
 
-        <a href="#">
-            Profile
-        </a>
+        <div class="stat-foot">
+            <span class="positive-dot"></span>
+            Ready for booking
+        </div>
+    </article>
 
-    </aside>
+    <article class="stat-card">
+        <div class="stat-top">
+            <span>Your active bookings</span>
+            <span class="stat-icon violet">▤</span>
+        </div>
 
+        <div class="stat-value">
+            {{ my_bookings }}<small> active</small>
+        </div>
 
-    <main class="dashboard-main">
-
-
-        <section class="welcome-section">
-
-            <h2>
-                Welcome, {{ name }}
-            </h2>
-
-            <p>
-                Manage your campus bike rentals from your RideSync dashboard.
-            </p>
-
-        </section>
-
-
-        <section class="dashboard-cards">
-
-
-            <div class="dashboard-card">
-
-                <h3>
-                    Available Bikes
-                </h3>
-
-                <p>
-                    View bikes currently available for rental.
-                </p>
-
-                <a href="{{ url_for('vehicles') }}">
-                    View Bikes
-                </a>
-
-            </div>
-
-
-            <div class="dashboard-card">
-
-                <h3>
-                    Book a Bike
-                </h3>
-
-                <p>
-                    Select an available bike and create a booking.
-                </p>
-
-                <a href="#">
-                    Book Bike
-                </a>
-
-            </div>
-
-
-            <div class="dashboard-card">
-
-                <h3>
-                    My Bookings
-                </h3>
-
-                <p>
-                    View and manage your current bookings.
-                </p>
-
-                <a href="#">
-                    View Bookings
-                </a>
-
-            </div>
-
-
-            <div class="dashboard-card">
-
-                <h3>
-                    Booking History
-                </h3>
-
-                <p>
-                    View your previous RideSync rentals.
-                </p>
-
-                <a href="#">
-                    View History
-                </a>
-
-            </div>
-
-
-            <div class="dashboard-card">
-
-                <h3>
-                    Return Bike
-                </h3>
-
-                <p>
-                    Return your currently rented bike.
-                </p>
-
-                <a href="#">
-                    Return Bike
-                </a>
-
-            </div>
-
-
-            <div class="dashboard-card">
-
-                <h3>
-                    Profile
-                </h3>
-
-                <p>
-                    Logged in as @{{ username }}
-                </p>
-
-                <a href="#">
-                    View Profile
-                </a>
-
-            </div>
-
-
-        </section>
-
-
-    </main>
-
+        <div class="stat-foot">Your current rentals</div>
+    </article>
 
 </div>
 
+<div class="content-columns">
 
-</body>
+    <section class="panel featured-panel">
 
-</html>
+        <div class="panel-heading">
+            <div>
+                <div class="eyebrow">EXPLORE THE FLEET</div>
+                <h3>Available vehicles</h3>
+            </div>
+
+            <a class="text-link" href="{{ url_for('vehicles') }}">
+                View all vehicles <span>→</span>
+            </a>
+        </div>
+
+        <div class="quick-picks">
+
+            {% for vehicle in featured %}
+
+            <a class="quick-pick" href="{{ url_for('vehicles') }}">
+
+                <div class="vehicle-thumb {{ 'bike-thumb' if vehicle.type == 'Bike' else '' }}">
+                    <span>{{ '🏍' if vehicle.type == 'Bike' else '🛵' }}</span>
+                    <i></i>
+                </div>
+
+                <div class="quick-info">
+                    <strong>{{ vehicle.name }}</strong>
+                    <span>{{ vehicle.brand }} · {{ vehicle.type }}</span>
+                </div>
+
+                <div class="quick-price">
+                    ₹{{ '%.0f'|format(vehicle.price_per_hour) }}
+                    <small>/hr</small>
+                </div>
+
+            </a>
+
+            {% else %}
+
+            <p class="empty-note">
+                No vehicles are currently available.
+            </p>
+
+            {% endfor %}
+
+        </div>
+
+    </section>
+
+    <section class="panel recent-panel">
+
+        <div class="panel-heading">
+            <div>
+                <div class="eyebrow">YOUR ACTIVITY</div>
+                <h3>Recent bookings</h3>
+            </div>
+
+            <a class="text-link" href="{{ url_for('booking.my_bookings') }}">
+                See all <span>→</span>
+            </a>
+        </div>
+
+        {% if recent %}
+
+        <div class="recent-list">
+
+            {% for booking in recent %}
+
+            <div class="recent-item">
+
+                <div class="recent-symbol">
+                    {{ '🏍' if booking.vehicle_type == 'Bike' else '🛵' }}
+                </div>
+
+                <div class="recent-info">
+                    <strong>{{ booking.vehicle_name }}</strong>
+                    <span>{{ booking.start_time }}</span>
+                </div>
+
+                <span class="status-pill {{ booking.status }}">
+                    {{ booking.status|capitalize }}
+                </span>
+
+            </div>
+
+            {% endfor %}
+
+        </div>
+
+        {% else %}
+
+        <div class="empty-state">
+            <div>▤</div>
+            <strong>No rides booked yet</strong>
+            <p>Your bookings will appear here.</p>
+            <a href="{{ url_for('vehicles') }}">
+                Book your first ride →
+            </a>
+        </div>
+
+        {% endif %}
+
+    </section>
+
+</div>
+
+{% endblock %}

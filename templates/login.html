@@ -1,113 +1,112 @@
-<!DOCTYPE html>
-<html lang="en">
 
-<head>
+{% extends "base.html" %}
 
-    <meta charset="UTF-8">
+{% block title %}Sign in{% endblock %}
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+{% block auth_content %}
 
-    <title>Login | RideSync</title>
+<div class="auth-layout">
 
-    <link
-        rel="stylesheet"
-        href="{{ url_for('static', filename='css/style.css') }}"
-    >
+    <div class="auth-visual">
 
-</head>
+        <a class="brand auth-brand" href="{{ url_for('login') }}">
+            <span class="brand-mark">↗</span>
+            <span>
+                ride<span class="brand-accent">sync</span>
+                <small>MOVE SMARTER</small>
+            </span>
+        </a>
 
+        <div class="auth-visual-copy">
+            <div class="hero-tag">
+                <span>✦</span> RIDESYNC BIKE RENTALS
+            </div>
 
-<body>
+            <h1>Make every<br>minute <em>move.</em></h1>
 
-<div class="auth-container">
+            <p>
+                Your schedule. Your ride. A simpler way to get where you need to go.
+            </p>
+        </div>
 
-    <div class="auth-card">
+        <div class="auth-decoration">
+            <div class="auth-circle"></div>
+            <div class="auth-bike">🏍️</div>
+        </div>
 
-        <h1>RideSync</h1>
+        <div class="auth-bottom">
+            RIDE YOUR WAY. EVERY DAY.
+        </div>
 
-        <p class="subtitle">
-            Campus Bike Rental System
-        </p>
+    </div>
 
+    <div class="auth-main">
 
-        <h2>Login</h2>
+        <div class="auth-form-wrap">
 
+            <div class="mobile-auth-brand">
+                RIDE<span>SYNC</span>
+            </div>
 
-        {% if success_message %}
+            <div class="eyebrow">WELCOME BACK</div>
 
-        <p class="success-message">
-            {{ success_message }}
-        </p>
+            <h2>Sign in to RideSync</h2>
 
-        {% endif %}
-
-
-        {% if message %}
-
-        <p class="error-message">
-            {{ message }}
-        </p>
-
-        {% endif %}
-
-
-        <form method="POST" action="{{ url_for('login') }}">
-
-            <label for="identifier">
-                Username or Email
-            </label>
-
-            <input
-                type="text"
-                id="identifier"
-                name="identifier"
-                placeholder="Enter your username or email"
-                autocomplete="username"
-                required
-            >
-
-
-            <label for="password">
-                Password
-            </label>
-
-            <input
-                type="password"
-                id="password"
-                name="password"
-                placeholder="Enter your password"
-                autocomplete="current-password"
-                required
-            >
-
-            <p class="recovery-link">
-                
+            <p class="auth-description">
+                Pick up where your journey left off.
             </p>
 
-            <button type="submit">
-                Login
-            </button>
+            {% if success_message %}
+                <p class="success-message">{{ success_message }}</p>
+            {% endif %}
 
-        </form>
+            {% if message %}
+                <p class="error-message">{{ message }}</p>
+            {% endif %}
 
+            <form method="POST" action="{{ url_for('login') }}" class="auth-form">
 
-        <p class="switch-text">
+                <label for="identifier">Username or Email</label>
 
-            Don't have an account?
+                <input
+                    id="identifier"
+                    type="text"
+                    name="identifier"
+                    placeholder="Enter your username or email"
+                    autocomplete="username"
+                    required
+                >
 
-            <a href="/register">
-                Register
-            </a>
+                <label for="password">Password</label>
 
-        </p>
+                <input
+                    id="password"
+                    type="password"
+                    name="password"
+                    placeholder="Enter your password"
+                    autocomplete="current-password"
+                    required
+                >
+
+                <button class="button button-primary button-full" type="submit">
+                    Sign in <span>→</span>
+                </button>
+
+            </form>
+
+            <div class="auth-switch">
+                New to RideSync?
+                <a href="{{ url_for('register') }}">Create an account</a>
+            </div>
+
+            <div class="auth-legal">
+                Welcome back to RideSync.
+            </div>
+
+        </div>
 
     </div>
 
 </div>
 
-</body>
-
-</html>
+{% endblock %}

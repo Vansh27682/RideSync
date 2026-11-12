@@ -1,6 +1,8 @@
 
+
 import os
 import hmac
+from datetime import datetime
 
 from flask import (
     Flask,
@@ -9,35 +11,44 @@ from flask import (
     redirect,
     url_for,
     session,
-    flash,
 )
-import database
 from werkzeug.security import generate_password_hash, check_password_hash
+
+import database
+
+from booking import booking_bp
+from admin import admin_bp
 
 
 DATABASE = database.DATABASE
 
+app = Flask(__name__)
+
+app.secret_key = os.environ.get(
+    "FLASK_SECRET_KEY",
+    "ridesync-dev-secret-key"
+)
+
+app.register_blueprint(booking_bp)
+app.register_blueprint(admin_bp)
+
+
+# DATABASE CONNECTION
 
 def get_db_connection():
     database.DATABASE = DATABASE
     return database.get_db_connection()
 
 
-app = Flask(__name__)
+# AUTHENTICATION HELPER
 
-from booking import booking_bp
-from admin import admin_bp
-
-app.register_blueprint(booking_bp)
-app.register_blueprint(admin_bp)
+def login_required():
+    return "user_id" in session
 
 
-# SECRET KEY
-
-app.secret_key = os.environ.get(
-    "FLASK_SECRET_KEY",
-    "ridesync-dev-secret-key"
-)
+@app.context_processor
+def inject_globals():
+    return {"current_year": datetime.now().year}
 
 
 # DATABASE INITIALIZATION
@@ -161,24 +172,60 @@ def init_db():
     connection.close()
 
 
-# HOME
+# DASHBOARD / HOME
 
 @app.route("/")
 def home():
-    if "user_id" in session:
-        if session.get("role") == "admin":
-            return redirect(url_for("admin.dashboard"))
 
-        return f"""
-        <h1>Welcome to RideSync, {session['user_name']}!</h1>
-        <p>You are successfully logged in.</p>
+    if not login_required():
+        return redirect(url_for("login"))
 
-        <a href="/vehicles">Browse Vehicles</a>
-        <br><br>
-        <a href="/logout">Logout</a>
-        """
+    if session.get("role") == "admin":
+        return redirect(url_for("admin.dashboard"))
 
-    return redirect(url_for("login"))
+    connection = get_db_connection()
+
+    total_vehicles = connection.execute(
+        "SELECT COUNT(*) FROM vehicles"
+    ).fetchone()[0]
+
+    available_vehicles = connection.execute("""
+        SELECT COUNT(*) FROM vehicles
+        WHERE LOWER(status) = 'available'
+    """).fetchone()[0]
+
+    my_bookings = connection.execute("""
+        SELECT COUNT(*) FROM bookings
+        WHERE user_id = ? AND LOWER(status) = 'confirmed'
+    """, (session["user_id"],)).fetchone()[0]
+
+    recent = connection.execute("""
+        SELECT b.*, v.name AS vehicle_name,
+               v.type AS vehicle_type
+        FROM bookings b
+        JOIN vehicles v ON v.id = b.vehicle_id
+        WHERE b.user_id = ?
+        ORDER BY b.id DESC
+        LIMIT 4
+    """, (session["user_id"],)).fetchall()
+
+    featured = connection.execute("""
+        SELECT * FROM vehicles
+        WHERE LOWER(status) = 'available'
+        ORDER BY price_per_hour ASC
+        LIMIT 3
+    """).fetchall()
+
+    connection.close()
+
+    return render_template(
+        "dashboard.html",
+        total_vehicles=total_vehicles,
+        available_vehicles=available_vehicles,
+        my_bookings=my_bookings,
+        recent=recent,
+        featured=featured
+    )
 
 
 # VEHICLES
@@ -186,30 +233,56 @@ def home():
 @app.route("/vehicles")
 def vehicles():
 
-    if "user_id" not in session:
+    if not login_required():
         return redirect(url_for("login"))
+
+    search = request.args.get("q", "").strip()
+    category = request.args.get("type", "All")
 
     connection = get_db_connection()
 
+    query = "SELECT * FROM vehicles WHERE 1=1"
+    params = []
+
+    if search:
+        query += """
+            AND (
+                name LIKE ?
+                OR brand LIKE ?
+                OR registration_number LIKE ?
+            )
+        """
+        params.extend([f"%{search}%"] * 3)
+
+    if category in ("Bike", "Scooter"):
+        query += " AND type = ?"
+        params.append(category)
+
+    query += " ORDER BY type, price_per_hour"
+
     vehicle_list = connection.execute(
-        "SELECT * FROM vehicles ORDER BY type, id"
+        query, params
     ).fetchall()
 
     connection.close()
 
     return render_template(
         "vehicles.html",
-        vehicles=vehicle_list
+        vehicles=vehicle_list,
+        search=search,
+        category=category
     )
 
 
-# REGISTER
+# REGISTRATION
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
+
     message = None
 
     if request.method == "POST":
+
         name = request.form.get("name", "").strip()
         username = request.form.get("username", "").strip()
         email = request.form.get("email", "").strip().lower()
@@ -220,7 +293,10 @@ def register():
         role = request.form.get("role", "customer").strip().lower()
         admin_code = request.form.get("admin_code", "")
 
-        if not all([name, username, email, phone, password, confirm_password]):
+        if not all([
+            name, username, email, phone,
+            password, confirm_password
+        ]):
             message = "All fields are required."
 
         elif role not in ["customer", "admin"]:
@@ -235,7 +311,10 @@ def register():
             or not any(char.isdigit() for char in password)
             or not any(not char.isalnum() for char in password)
         ):
-            message = "Password must contain at least 8 characters, including a letter, number and special character."
+            message = (
+                "Password must contain at least 8 characters, "
+                "including a letter, number and special character."
+            )
 
         elif role == "admin" and not os.environ.get("RIDESYNC_ADMIN_CODE"):
             message = "Admin registration is currently unavailable."
@@ -247,6 +326,7 @@ def register():
             message = "Invalid admin registration code."
 
         else:
+
             phone_digits = phone.replace(" ", "").replace("-", "")
 
             if phone_digits.startswith("+91"):
@@ -260,41 +340,57 @@ def register():
                 message = "Enter a valid Indian mobile number."
 
             else:
+
                 normalized_phone = "+91" + phone_digits
                 connection = get_db_connection()
 
                 existing_user = connection.execute(
-                    "SELECT id FROM users WHERE email = ? OR username = ?",
+                    """
+                    SELECT id FROM users
+                    WHERE email = ? OR username = ?
+                    """,
                     (email, username)
                 ).fetchone()
 
                 if existing_user:
-                    message = "An account with this email or username already exists."
+                    message = (
+                        "An account with this email or username "
+                        "already exists."
+                    )
                     connection.close()
 
                 else:
+
                     hashed_password = generate_password_hash(password)
 
-                    connection.execute(
-                        """
-                        INSERT INTO users
-                        (name, username, email, phone, password, role)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                        """,
-                        (
-                            name,
-                            username,
-                            email,
-                            normalized_phone,
-                            hashed_password,
-                            role
+                    try:
+                        connection.execute(
+                            """
+                            INSERT INTO users
+                            (name, username, email, phone, password, role)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                            """,
+                            (
+                                name,
+                                username,
+                                email,
+                                normalized_phone,
+                                hashed_password,
+                                role
+                            )
                         )
-                    )
 
-                    connection.commit()
-                    connection.close()
+                        connection.commit()
+                        connection.close()
 
-                    return redirect(url_for("login"))
+                        return redirect(url_for("login"))
+
+                    except database.IntegrityError:
+                        connection.close()
+                        message = (
+                            "An account with this email or username "
+                            "already exists."
+                        )
 
     return render_template("register.html", message=message)
 
@@ -303,9 +399,11 @@ def register():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+
     message = None
 
     if request.method == "POST":
+
         identifier = request.form.get("identifier", "").strip()
         password = request.form.get("password", "")
 
@@ -313,6 +411,7 @@ def login():
             message = "Username or email and password are required."
 
         else:
+
             connection = get_db_connection()
 
             user = connection.execute(
@@ -326,23 +425,26 @@ def login():
             connection.close()
 
             if user and check_password_hash(user["password"], password):
+
+                session.clear()
                 session["user_id"] = user["id"]
                 session["user_name"] = user["name"]
                 session["role"] = user["role"]
 
                 return redirect(url_for("home"))
 
-            else:
-                message = "Invalid email or password."
+            message = "Invalid email or password."
 
     return render_template("login.html", message=message)
 
 
 # LOGOUT
 
-@app.route("/logout")
+@app.route("/logout", methods=["GET", "POST"])
 def logout():
+
     session.clear()
+
     return redirect(url_for("login"))
 
 
@@ -351,3 +453,4 @@ def logout():
 if __name__ == "__main__":
     init_db()
     app.run(debug=True)
+

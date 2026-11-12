@@ -1,70 +1,161 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>RideSync - Vehicles</title>
-</head>
 
-<body>
+{% extends "base.html" %}
 
-    
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-    <h1>RideSync Vehicles</h1>
+{% block title %}Explore vehicles{% endblock %}
+{% block breadcrumb %}Explore vehicles{% endblock %}
 
-    <div style="position: relative;">
-        <button type="button" onclick="document.getElementById('navMenu').hidden = !document.getElementById('navMenu').hidden">
-            ☰ Menu
-        </button>
+{% block content %}
 
-        <div id="navMenu" hidden style="position: absolute; right: 0; background: white; border: 1px solid #ccc; padding: 12px; min-width: 140px;">
-            <p><a href="{{ url_for('booking.my_bookings') }}">My Bookings</a></p>
-            <p><a href="{{ url_for('home') }}">Back to Home</a></p>
+<div class="page-intro">
+    <div>
+        <div class="eyebrow">
+            <span class="eyebrow-line"></span>
+            THE RIDESYNC FLEET
         </div>
+
+        <h1>Find your <span>ride.</span></h1>
+
+        <p class="subheading">
+            Choose a vehicle that fits your plans. Your next ride starts here.
+        </p>
+    </div>
+
+    <div class="fleet-count">
+        <strong>{{ vehicles|length }}</strong>
+        <span>VEHICLES FOUND</span>
     </div>
 </div>
 
-<p>Available bikes and scooters</p>
+<div class="fleet-toolbar">
 
+    <form class="search-box" method="get" action="{{ url_for('vehicles') }}">
+        <span>⌕</span>
 
-    <hr>
+        <input
+            type="search"
+            name="q"
+            value="{{ search|default('') }}"
+            placeholder="Search by vehicle, brand or registration..."
+        >
+
+        <input
+            type="hidden"
+            name="type"
+            value="{{ category|default('All') }}"
+        >
+
+        <button type="submit">Search</button>
+    </form>
+
+    <div class="filter-tabs">
+
+        <a
+            class="{{ 'selected' if category|default('All') == 'All' else '' }}"
+            href="{{ url_for('vehicles', q=search|default(''), type='All') }}"
+        >
+            All vehicles
+        </a>
+
+        <a
+            class="{{ 'selected' if category|default('All') == 'Bike' else '' }}"
+            href="{{ url_for('vehicles', q=search|default(''), type='Bike') }}"
+        >
+            Bikes
+        </a>
+
+        <a
+            class="{{ 'selected' if category|default('All') == 'Scooter' else '' }}"
+            href="{{ url_for('vehicles', q=search|default(''), type='Scooter') }}"
+        >
+            Scooters
+        </a>
+
+    </div>
+
+</div>
+
+<div class="vehicle-grid">
 
     {% for vehicle in vehicles %}
 
-        <div>
-            <h2>{{ vehicle["brand"] }} {{ vehicle["name"] }}</h2>
+    <article class="vehicle-card">
 
-            <p>
-                Type: {{ vehicle["type"] }}
-            </p>
+        <div class="vehicle-art {{ 'bike-art' if vehicle.type == 'Bike' else 'scooter-art' }}">
 
-            <p>
-                Model: {{ vehicle["model"] }}
-            </p>
+            <div class="art-top">
+                <span class="category-tag">{{ vehicle.type }}</span>
 
-            <p>
-                Registration: {{ vehicle["registration_number"] }}
-            </p>
+                <span class="availability">
+                    <i></i> {{ vehicle.status|title }}
+                </span>
+            </div>
 
-            <p>
-                Price: Rs. {{ vehicle["price_per_hour"] }} / hour
-            </p>
+            <div class="vehicle-emoji">
+                {{ '🏍️' if vehicle.type == 'Bike' else '🛵' }}
+            </div>
 
-            <p>
-                Status: {{ vehicle["status"] }}
-            </p>
+            <div class="art-orbit"></div>
 
-            {% if vehicle["status"] == "available" %}
-                <a href="{{ url_for('booking.book_vehicle', vehicle_id=vehicle['id']) }}">
-                    <button type="button">Book Now</button>
-                 </a>
-            {% else %}
-                <button disabled>Not Available</button>
-            {% endif %}
+            <span class="art-model">{{ vehicle.brand|upper }}</span>
+
         </div>
 
-        <hr>
+        <div class="vehicle-details">
+
+            <div class="vehicle-title-row">
+
+                <div>
+                    <h3>{{ vehicle.name }}</h3>
+                    <p>{{ vehicle.brand }} {{ vehicle.model }}</p>
+                </div>
+
+                <div class="vehicle-price">
+                    <strong>₹{{ '%.0f'|format(vehicle.price_per_hour) }}</strong>
+                    <span>/ hour</span>
+                </div>
+
+            </div>
+
+            <div class="vehicle-meta">
+                <span>▣ {{ vehicle.registration_number }}</span>
+                <span>◉ {{ vehicle.type }}</span>
+            </div>
+
+            {% if vehicle.status|lower == 'available' %}
+
+            <a
+                class="button button-primary button-full"
+                href="{{ url_for('booking.book_vehicle', vehicle_id=vehicle.id) }}"
+            >
+                Book this ride <span>→</span>
+            </a>
+
+            {% else %}
+
+            <button class="button button-primary button-full" type="button" disabled>
+                Currently unavailable
+            </button>
+
+            {% endif %}
+
+        </div>
+
+    </article>
+
+    {% else %}
+
+    <div class="no-results">
+        <div>⌕</div>
+        <h3>No rides found</h3>
+        <p>Try another search term or switch the vehicle category.</p>
+
+        <a class="text-link" href="{{ url_for('vehicles') }}">
+            Clear filters →
+        </a>
+    </div>
 
     {% endfor %}
 
+</div>
 
-</body>
-</html>
+{% endblock %}
