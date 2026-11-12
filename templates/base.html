@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,7 +25,7 @@
     <nav class="side-nav">
       <a class="{% if request.endpoint == 'home' %}active{% endif %}" href="{{ url_for('home') }}"><span class="nav-icon">⌂</span> Overview</a>
       <a class="{% if request.endpoint == 'vehicles' %}active{% endif %}" href="{{ url_for('vehicles') }}"><span class="nav-icon">◈</span> Explore vehicles</a>
-      <a class="{% if request.endpoint == 'bookings' %}active{% endif %}" href="{{ url_for('bookings') }}"><span class="nav-icon">▤</span> My bookings</a>
+      <a class="{% if request.endpoint == 'booking.my_bookings' %}active{% endif %}" href="{{ url_for('booking.my_bookings') }}"><span class="nav-icon">▤</span> My bookings</a>
     </nav>
     <div class="sidebar-bottom">
       <div class="help-card"><div class="help-orb">✦</div><strong>Need a hand?</strong><p>Your next ride is just a few clicks away.</p><a href="{{ url_for('vehicles') }}">Explore fleet <span>↗</span></a></div>
