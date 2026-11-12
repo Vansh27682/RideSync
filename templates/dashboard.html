@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Overview{% endblock %}
+{% block breadcrumb %}Overview{% endblock %}
+{% block content %}
+<div class="welcome-row">
+  <div><div class="eyebrow"><span class="eyebrow-line"></span> YOUR CAMPUS, YOUR ROUTE</div><h1>Good to see you, <span>{{ session.get('user_name', '').split(' ')[0] }}.</span></h1><p class="subheading">Where would you like to go today?</p></div>
+  <a class="button button-primary" href="{{ url_for('vehicles') }}">Find a ride <span>↗</span></a>
+</div>
+<section class="hero-banner">
+  <div class="hero-grid"></div><div class="hero-content"><div class="hero-tag"><span>✦</span> CAMPUS MOBILITY, REIMAGINED</div><h2>Your next journey<br>starts <em>here.</em></h2><p>Skip the wait. Pick your ride, set your time, and get moving with RideSync.</p><a class="button button-light" href="{{ url_for('vehicles') }}">Explore the fleet <span>→</span></a></div>
+  <div class="hero-visual"><div class="hero-ring ring-one"></div><div class="hero-ring ring-two"></div><div class="hero-glow"></div><div class="hero-bike">🏍</div><div class="hero-chip"><span class="live-dot"></span> READY WHEN YOU ARE</div><div class="hero-coordinate">30.3165° N&nbsp; 78.0322° E</div></div>
+  <div class="hero-index">01 <span>/</span> 03</div>
+</section>
+<div class="section-heading"><div><div class="eyebrow">AT A GLANCE</div><h2>Your mobility overview</h2></div><span class="updated-label"><i></i> LIVE FLEET DATA</span></div>
+<div class="stats-grid">
+  <article class="stat-card"><div class="stat-top"><span>Total fleet</span><span class="stat-icon">◈</span></div><div class="stat-value">{{ total_vehicles }}<small> vehicles</small></div><div class="stat-foot">Across bikes and scooters</div></article>
+  <article class="stat-card"><div class="stat-top"><span>Available now</span><span class="stat-icon green">↗</span></div><div class="stat-value">{{ available_vehicles }}<small> ready to ride</small></div><div class="stat-foot"><span class="positive-dot"></span> Vehicles ready for booking</div></article>
+  <article class="stat-card"><div class="stat-top"><span>Your active bookings</span><span class="stat-icon violet">▤</span></div><div class="stat-value">{{ my_bookings }}<small> confirmed</small></div><div class="stat-foot">Your upcoming journeys</div></article>
+</div>
+<div class="content-columns">
+  <section class="panel featured-panel"><div class="panel-heading"><div><div class="eyebrow">HANDPICKED FOR YOU</div><h3>Quick picks</h3></div><a class="text-link" href="{{ url_for('vehicles') }}">View all vehicles <span>→</span></a></div>
+    <div class="quick-picks">{% for vehicle in featured %}<a class="quick-pick" href="{{ url_for('vehicles') }}"><div class="vehicle-thumb {{ 'bike-thumb' if vehicle.type == 'Bike' else '' }}"><span>{{ '🏍' if vehicle.type == 'Bike' else '🛵' }}</span><i></i></div><div class="quick-info"><strong>{{ vehicle.name }}</strong><span>{{ vehicle.brand }} · {{ vehicle.type }}</span></div><div class="quick-price">₹{{ '%.0f'|format(vehicle.price_per_hour) }}<small>/hr</small></div></a>{% else %}<p class="empty-note">No vehicles are currently available.</p>{% endfor %}</div>
+  </section>
+  <section class="panel recent-panel"><div class="panel-heading"><div><div class="eyebrow">YOUR ACTIVITY</div><h3>Recent bookings</h3></div><a class="text-link" href="{{ url_for('bookings') }}">See all <span>→</span></a></div>
+    {% if recent %}<div class="recent-list">{% for booking in recent %}<div class="recent-item"><div class="recent-symbol">{{ '🏍' if booking.vehicle_type == 'Bike' else '🛵' }}</div><div class="recent-info"><strong>{{ booking.vehicle_name }}</strong><span>{{ booking.start_time.replace('T', ' · ') }}</span></div><span class="status-pill {{ 'cancelled' if booking.status == 'Cancelled' else '' }}">{{ booking.status }}</span></div>{% endfor %}</div>{% else %}<div class="empty-state"><div>▤</div><strong>No rides booked yet</strong><p>Your upcoming journeys will appear here.</p><a href="{{ url_for('vehicles') }}">Book your first ride →</a></div>{% endif %}
+  </section>
+</div>
+{% endblock %}
