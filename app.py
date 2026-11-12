@@ -174,6 +174,7 @@ def init_db():
 
 # DASHBOARD / HOME
 
+
 @app.route("/")
 def home():
 
@@ -185,19 +186,19 @@ def home():
 
     connection = get_db_connection()
 
-    total_vehicles = connection.execute(
-        "SELECT COUNT(*) FROM vehicles"
-    ).fetchone()[0]
+    total_vehicles = connection.execute("""
+        SELECT COUNT(*) AS total FROM vehicles
+    """).fetchone()["total"]
 
     available_vehicles = connection.execute("""
-        SELECT COUNT(*) FROM vehicles
+        SELECT COUNT(*) AS total FROM vehicles
         WHERE LOWER(status) = 'available'
-    """).fetchone()[0]
+    """).fetchone()["total"]
 
     my_bookings = connection.execute("""
-        SELECT COUNT(*) FROM bookings
+        SELECT COUNT(*) AS total FROM bookings
         WHERE user_id = ? AND LOWER(status) = 'confirmed'
-    """, (session["user_id"],)).fetchone()[0]
+    """, (session["user_id"],)).fetchone()["total"]
 
     recent = connection.execute("""
         SELECT b.*, v.name AS vehicle_name,
@@ -226,6 +227,7 @@ def home():
         recent=recent,
         featured=featured
     )
+
 
 
 # VEHICLES
