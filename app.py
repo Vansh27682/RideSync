@@ -1,5 +1,3 @@
-
-
 import os
 import hmac
 from datetime import datetime
