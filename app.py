@@ -1,56 +1,136 @@
 
+
 import os
-import sqlite3
+import hmac
 from datetime import datetime
-from pathlib import Path
 
 from flask import (
-    Flask, flash, redirect, render_template,
-    request, session, url_for
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    session,
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 
+import database
 
-# --------------------------------------------------
-# APPLICATION CONFIGURATION
-# --------------------------------------------------
+from booking import booking_bp
+from admin import admin_bp
 
-BASE_DIR = Path(__file__).resolve().parent
-DATABASE = BASE_DIR / "ridesync.db"
+
+DATABASE = database.DATABASE
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.environ.get(
-    "SECRET_KEY",
-    "ridesync-development-secret-key-change-before-launch"
+
+app.secret_key = os.environ.get(
+    "FLASK_SECRET_KEY",
+    "ridesync-dev-secret-key"
 )
 
+app.register_blueprint(booking_bp)
+app.register_blueprint(admin_bp)
 
-# --------------------------------------------------
+
 # DATABASE CONNECTION
-# --------------------------------------------------
 
 def get_db_connection():
-    connection = sqlite3.connect(DATABASE)
-    connection.row_factory = sqlite3.Row
-    connection.execute("PRAGMA foreign_keys = ON")
-    return connection
+    database.DATABASE = DATABASE
+    return database.get_db_connection()
 
 
-# --------------------------------------------------
+# AUTHENTICATION HELPER
+
+def login_required():
+    return "user_id" in session
+
+
+@app.context_processor
+def inject_globals():
+    return {"current_year": datetime.now().year}
+
+
 # DATABASE INITIALIZATION
-# --------------------------------------------------
 
 def init_db():
-    with get_db_connection() as connection:
+    connection = get_db_connection()
+
+    if database.is_postgres():
+
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                username TEXT UNIQUE,
+                email TEXT UNIQUE NOT NULL,
+                phone TEXT,
+                password TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'customer'
+            )
+        """)
+
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS vehicles (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                type TEXT NOT NULL,
+                brand TEXT NOT NULL,
+                model TEXT NOT NULL,
+                registration_number TEXT UNIQUE NOT NULL,
+                price_per_hour DOUBLE PRECISION NOT NULL,
+                status TEXT NOT NULL DEFAULT 'available',
+                image TEXT
+            )
+        """)
+
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS bookings (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id),
+                vehicle_id INTEGER NOT NULL REFERENCES vehicles(id),
+                start_time TEXT NOT NULL,
+                end_time TEXT NOT NULL,
+                total_price DOUBLE PRECISION NOT NULL,
+                status TEXT NOT NULL DEFAULT 'confirmed',
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+    else:
 
         connection.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
+                username TEXT UNIQUE,
                 email TEXT UNIQUE NOT NULL,
+                phone TEXT,
                 password TEXT NOT NULL,
-                role TEXT NOT NULL DEFAULT 'student'
+                role TEXT NOT NULL DEFAULT 'customer'
             )
+        """)
+
+        columns = [
+            row["name"]
+            for row in connection.execute(
+                "PRAGMA table_info(users)"
+            ).fetchall()
+        ]
+
+        if "username" not in columns:
+            connection.execute(
+                "ALTER TABLE users ADD COLUMN username TEXT"
+            )
+
+        if "phone" not in columns:
+            connection.execute(
+                "ALTER TABLE users ADD COLUMN phone TEXT"
+            )
+
+        connection.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username
+            ON users(username)
         """)
 
         connection.execute("""
@@ -73,71 +153,26 @@ def init_db():
                 user_id INTEGER NOT NULL,
                 vehicle_id INTEGER NOT NULL,
                 start_time TEXT NOT NULL,
-                duration_hours INTEGER NOT NULL,
+                end_time TEXT NOT NULL,
                 total_price REAL NOT NULL,
-                status TEXT NOT NULL DEFAULT 'Confirmed',
+                status TEXT NOT NULL DEFAULT 'confirmed',
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(user_id) REFERENCES users(id),
-                FOREIGN KEY(vehicle_id) REFERENCES vehicles(id)
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
             )
         """)
 
-        vehicle_count = connection.execute(
-            "SELECT COUNT(*) FROM vehicles"
-        ).fetchone()[0]
+    connection.execute("""
+        UPDATE users
+        SET role = 'customer'
+        WHERE role = 'student'
+    """)
 
-        # Add sample vehicles only if the table is empty.
-        if vehicle_count == 0:
-
-            vehicles = [
-                ("Activa 6G", "Scooter", "Honda", "6G", "UK07RS1001", 40, "available", None),
-                ("Jupiter", "Scooter", "TVS", "ZX", "UK07RS1002", 40, "available", None),
-                ("Access 125", "Scooter", "Suzuki", "125", "UK07RS1003", 45, "available", None),
-                ("Ntorq 125", "Scooter", "TVS", "Race Edition", "UK07RS1004", 50, "available", None),
-                ("Dio", "Scooter", "Honda", "Standard", "UK07RS1005", 40, "available", None),
-                ("Pleasure Plus", "Scooter", "Hero", "XTEC", "UK07RS1006", 40, "available", None),
-                ("Destini 125", "Scooter", "Hero", "XTEC", "UK07RS1007", 45, "available", None),
-                ("RayZR 125", "Scooter", "Yamaha", "Fi Hybrid", "UK07RS1008", 50, "available", None),
-                ("Avenis 125", "Scooter", "Suzuki", "Standard", "UK07RS1009", 45, "available", None),
-                ("Fascino 125", "Scooter", "Yamaha", "Fi Hybrid", "UK07RS1010", 45, "available", None),
-                ("Activa 125", "Scooter", "Honda", "H-Smart", "UK07RS1011", 50, "available", None),
-                ("Jupiter 125", "Scooter", "TVS", "Disc", "UK07RS1012", 50, "available", None),
-                ("Pulsar 150", "Bike", "Bajaj", "150", "UK07RS2001", 65, "available", None),
-                ("Apache RTR 160", "Bike", "TVS", "160 4V", "UK07RS2002", 75, "available", None),
-                ("Splendor Plus", "Bike", "Hero", "XTEC", "UK07RS2003", 55, "available", None),
-                ("FZ-S", "Bike", "Yamaha", "FI V4", "UK07RS2004", 75, "available", None),
-                ("Hunter 350", "Bike", "Royal Enfield", "Metro", "UK07RS2005", 100, "available", None),
-                ("Classic 350", "Bike", "Royal Enfield", "Classic", "UK07RS2006", 110, "available", None),
-                ("Pulsar NS200", "Bike", "Bajaj", "NS200", "UK07RS2007", 90, "available", None),
-                ("Apache RTR 200", "Bike", "TVS", "4V", "UK07RS2008", 90, "available", None),
-            ]
-
-            connection.executemany("""
-                INSERT INTO vehicles (
-                    name, type, brand, model,
-                    registration_number, price_per_hour,
-                    status, image
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, vehicles)
+    connection.commit()
+    connection.close()
 
 
-# --------------------------------------------------
-# AUTHENTICATION HELPER
-# --------------------------------------------------
-
-def login_required():
-    return "user_id" in session
-
-
-@app.context_processor
-def inject_globals():
-    return {"current_year": datetime.now().year}
-
-
-# --------------------------------------------------
 # DASHBOARD / HOME
-# --------------------------------------------------
 
 @app.route("/")
 def home():
@@ -145,37 +180,43 @@ def home():
     if not login_required():
         return redirect(url_for("login"))
 
-    with get_db_connection() as connection:
+    if session.get("role") == "admin":
+        return redirect(url_for("admin.dashboard"))
 
-        total_vehicles = connection.execute(
-            "SELECT COUNT(*) FROM vehicles"
-        ).fetchone()[0]
+    connection = get_db_connection()
 
-        available_vehicles = connection.execute(
-            "SELECT COUNT(*) FROM vehicles WHERE lower(status) = 'available'"
-        ).fetchone()[0]
+    total_vehicles = connection.execute(
+        "SELECT COUNT(*) FROM vehicles"
+    ).fetchone()[0]
 
-        my_bookings = connection.execute("""
-            SELECT COUNT(*) FROM bookings
-            WHERE user_id = ? AND status = 'Confirmed'
-        """, (session["user_id"],)).fetchone()[0]
+    available_vehicles = connection.execute("""
+        SELECT COUNT(*) FROM vehicles
+        WHERE LOWER(status) = 'available'
+    """).fetchone()[0]
 
-        recent = connection.execute("""
-            SELECT b.*, v.name AS vehicle_name,
-                   v.type AS vehicle_type
-            FROM bookings b
-            JOIN vehicles v ON v.id = b.vehicle_id
-            WHERE b.user_id = ?
-            ORDER BY b.id DESC
-            LIMIT 4
-        """, (session["user_id"],)).fetchall()
+    my_bookings = connection.execute("""
+        SELECT COUNT(*) FROM bookings
+        WHERE user_id = ? AND LOWER(status) = 'confirmed'
+    """, (session["user_id"],)).fetchone()[0]
 
-        featured = connection.execute("""
-            SELECT * FROM vehicles
-            WHERE lower(status) = 'available'
-            ORDER BY price_per_hour ASC
-            LIMIT 3
-        """).fetchall()
+    recent = connection.execute("""
+        SELECT b.*, v.name AS vehicle_name,
+               v.type AS vehicle_type
+        FROM bookings b
+        JOIN vehicles v ON v.id = b.vehicle_id
+        WHERE b.user_id = ?
+        ORDER BY b.id DESC
+        LIMIT 4
+    """, (session["user_id"],)).fetchall()
+
+    featured = connection.execute("""
+        SELECT * FROM vehicles
+        WHERE LOWER(status) = 'available'
+        ORDER BY price_per_hour ASC
+        LIMIT 3
+    """).fetchall()
+
+    connection.close()
 
     return render_template(
         "dashboard.html",
@@ -187,9 +228,7 @@ def home():
     )
 
 
-# --------------------------------------------------
-# VEHICLE LISTING, SEARCH AND FILTER
-# --------------------------------------------------
+# VEHICLES
 
 @app.route("/vehicles")
 def vehicles():
@@ -200,30 +239,32 @@ def vehicles():
     search = request.args.get("q", "").strip()
     category = request.args.get("type", "All")
 
-    with get_db_connection() as connection:
+    connection = get_db_connection()
 
-        query = "SELECT * FROM vehicles WHERE 1=1"
-        params = []
+    query = "SELECT * FROM vehicles WHERE 1=1"
+    params = []
 
-        if search:
-            query += """
-                AND (
-                    name LIKE ?
-                    OR brand LIKE ?
-                    OR registration_number LIKE ?
-                )
-            """
-            params.extend([f"%{search}%"] * 3)
+    if search:
+        query += """
+            AND (
+                name LIKE ?
+                OR brand LIKE ?
+                OR registration_number LIKE ?
+            )
+        """
+        params.extend([f"%{search}%"] * 3)
 
-        if category in ("Bike", "Scooter"):
-            query += " AND type = ?"
-            params.append(category)
+    if category in ("Bike", "Scooter"):
+        query += " AND type = ?"
+        params.append(category)
 
-        query += " ORDER BY type, price_per_hour"
+    query += " ORDER BY type, price_per_hour"
 
-        vehicle_list = connection.execute(
-            query, params
-        ).fetchall()
+    vehicle_list = connection.execute(
+        query, params
+    ).fetchall()
+
+    connection.close()
 
     return render_template(
         "vehicles.html",
@@ -233,233 +274,183 @@ def vehicles():
     )
 
 
-# --------------------------------------------------
-# BOOK A VEHICLE
-# --------------------------------------------------
-
-@app.route("/book/<int:vehicle_id>", methods=["POST"])
-def book_vehicle(vehicle_id):
-
-    if not login_required():
-        return redirect(url_for("login"))
-
-    start_time = request.form.get("start_time", "").strip()
-
-    try:
-        duration = int(request.form.get("duration", "1"))
-        start_dt = datetime.fromisoformat(start_time)
-
-        if duration < 1 or duration > 24:
-            raise ValueError
-
-        if start_dt <= datetime.now():
-            raise ValueError
-
-    except (ValueError, TypeError):
-        flash(
-            "Choose a future pickup time and a duration between 1 and 24 hours.",
-            "error"
-        )
-        return redirect(url_for("vehicles"))
-
-    with get_db_connection() as connection:
-
-        vehicle = connection.execute(
-            "SELECT * FROM vehicles WHERE id = ?",
-            (vehicle_id,)
-        ).fetchone()
-
-        if not vehicle or vehicle["status"].lower() != "available":
-            flash("This vehicle is currently unavailable.", "error")
-            return redirect(url_for("vehicles"))
-
-        total = float(vehicle["price_per_hour"]) * duration
-
-        connection.execute("""
-            INSERT INTO bookings (
-                user_id, vehicle_id, start_time,
-                duration_hours, total_price
-            )
-            VALUES (?, ?, ?, ?, ?)
-        """, (
-            session["user_id"],
-            vehicle_id,
-            start_dt.isoformat(timespec="minutes"),
-            duration,
-            total
-        ))
-
-    flash(
-        f"{vehicle['name']} reserved successfully. Your booking is confirmed.",
-        "success"
-    )
-
-    return redirect(url_for("bookings"))
-
-
-# --------------------------------------------------
-# BOOKING HISTORY
-# --------------------------------------------------
-
-@app.route("/bookings")
-def bookings():
-
-    if not login_required():
-        return redirect(url_for("login"))
-
-    with get_db_connection() as connection:
-
-        booking_list = connection.execute("""
-            SELECT b.*, v.name AS vehicle_name,
-                   v.type AS vehicle_type,
-                   v.registration_number,
-                   v.brand
-            FROM bookings b
-            JOIN vehicles v ON v.id = b.vehicle_id
-            WHERE b.user_id = ?
-            ORDER BY b.id DESC
-        """, (session["user_id"],)).fetchall()
-
-    return render_template(
-        "bookings.html",
-        bookings=booking_list
-    )
-
-
-# --------------------------------------------------
-# CANCEL BOOKING
-# --------------------------------------------------
-
-@app.route("/booking/<int:booking_id>/cancel", methods=["POST"])
-def cancel_booking(booking_id):
-
-    if not login_required():
-        return redirect(url_for("login"))
-
-    with get_db_connection() as connection:
-
-        result = connection.execute("""
-            UPDATE bookings
-            SET status = 'Cancelled'
-            WHERE id = ?
-            AND user_id = ?
-            AND status = 'Confirmed'
-        """, (booking_id, session["user_id"]))
-
-    if result.rowcount:
-        flash("Your booking has been cancelled.", "success")
-    else:
-        flash("This booking could not be cancelled.", "error")
-
-    return redirect(url_for("bookings"))
-
-
-# --------------------------------------------------
-# USER REGISTRATION
-# --------------------------------------------------
+# REGISTRATION
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
 
+    message = None
+
     if request.method == "POST":
 
         name = request.form.get("name", "").strip()
+        username = request.form.get("username", "").strip()
         email = request.form.get("email", "").strip().lower()
+        phone = request.form.get("phone", "").strip()
         password = request.form.get("password", "")
-        confirm = request.form.get("confirm_password", "")
+        confirm_password = request.form.get("confirm_password", "")
 
-        if not name or not email:
-            flash("Please complete all fields.", "error")
+        role = request.form.get("role", "customer").strip().lower()
+        admin_code = request.form.get("admin_code", "")
 
-        elif password != confirm:
-            flash("Passwords do not match.", "error")
+        if not all([
+            name, username, email, phone,
+            password, confirm_password
+        ]):
+            message = "All fields are required."
 
-        elif len(password) < 8:
-            flash("Use a password with at least 8 characters.", "error")
+        elif role not in ["customer", "admin"]:
+            message = "Invalid account type selected."
+
+        elif password != confirm_password:
+            message = "Passwords do not match."
+
+        elif (
+            len(password) < 8
+            or not any(char.isalpha() for char in password)
+            or not any(char.isdigit() for char in password)
+            or not any(not char.isalnum() for char in password)
+        ):
+            message = (
+                "Password must contain at least 8 characters, "
+                "including a letter, number and special character."
+            )
+
+        elif role == "admin" and not os.environ.get("RIDESYNC_ADMIN_CODE"):
+            message = "Admin registration is currently unavailable."
+
+        elif role == "admin" and not hmac.compare_digest(
+            admin_code,
+            os.environ.get("RIDESYNC_ADMIN_CODE", "")
+        ):
+            message = "Invalid admin registration code."
 
         else:
-            try:
-                with get_db_connection() as connection:
 
-                    connection.execute("""
-                        INSERT INTO users (name, email, password)
-                        VALUES (?, ?, ?)
-                    """, (
-                        name,
-                        email,
-                        generate_password_hash(password)
-                    ))
+            phone_digits = phone.replace(" ", "").replace("-", "")
 
-                flash(
-                    "Account created. Sign in to continue.",
-                    "success"
-                )
+            if phone_digits.startswith("+91"):
+                phone_digits = phone_digits[3:]
 
-                return redirect(url_for("login"))
+            if (
+                len(phone_digits) != 10
+                or not phone_digits.isdigit()
+                or phone_digits[0] not in "6789"
+            ):
+                message = "Enter a valid Indian mobile number."
 
-            except sqlite3.IntegrityError:
-                flash(
-                    "An account with this email already exists.",
-                    "error"
-                )
+            else:
 
-    return render_template("register.html")
+                normalized_phone = "+91" + phone_digits
+                connection = get_db_connection()
+
+                existing_user = connection.execute(
+                    """
+                    SELECT id FROM users
+                    WHERE email = ? OR username = ?
+                    """,
+                    (email, username)
+                ).fetchone()
+
+                if existing_user:
+                    message = (
+                        "An account with this email or username "
+                        "already exists."
+                    )
+                    connection.close()
+
+                else:
+
+                    hashed_password = generate_password_hash(password)
+
+                    try:
+                        connection.execute(
+                            """
+                            INSERT INTO users
+                            (name, username, email, phone, password, role)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                            """,
+                            (
+                                name,
+                                username,
+                                email,
+                                normalized_phone,
+                                hashed_password,
+                                role
+                            )
+                        )
+
+                        connection.commit()
+                        connection.close()
+
+                        return redirect(url_for("login"))
+
+                    except database.IntegrityError:
+                        connection.close()
+                        message = (
+                            "An account with this email or username "
+                            "already exists."
+                        )
+
+    return render_template("register.html", message=message)
 
 
-# --------------------------------------------------
-# USER LOGIN
-# --------------------------------------------------
+# LOGIN
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
 
+    message = None
+
     if request.method == "POST":
 
-        email = request.form.get("email", "").strip().lower()
+        identifier = request.form.get("identifier", "").strip()
         password = request.form.get("password", "")
 
-        with get_db_connection() as connection:
+        if not identifier or not password:
+            message = "Username or email and password are required."
+
+        else:
+
+            connection = get_db_connection()
 
             user = connection.execute(
-                "SELECT * FROM users WHERE email = ?",
-                (email,)
+                """
+                SELECT * FROM users
+                WHERE LOWER(email) = ? OR LOWER(username) = ?
+                """,
+                (identifier.lower(), identifier.lower())
             ).fetchone()
 
-        if user and check_password_hash(user["password"], password):
+            connection.close()
 
-            session.clear()
-            session["user_id"] = user["id"]
-            session["user_name"] = user["name"]
-            session["role"] = user["role"]
+            if user and check_password_hash(user["password"], password):
 
-            return redirect(url_for("home"))
+                session.clear()
+                session["user_id"] = user["id"]
+                session["user_name"] = user["name"]
+                session["role"] = user["role"]
 
-        flash(
-            "The email or password you entered is incorrect.",
-            "error"
-        )
+                return redirect(url_for("home"))
 
-    return render_template("login.html")
+            message = "Invalid email or password."
+
+    return render_template("login.html", message=message)
 
 
-# --------------------------------------------------
-# USER LOGOUT
-# --------------------------------------------------
+# LOGOUT
 
-@app.route("/logout", methods=["POST"])
+@app.route("/logout", methods=["GET", "POST"])
 def logout():
 
     session.clear()
 
-    flash("You have been signed out.", "success")
-
     return redirect(url_for("login"))
 
 
-# --------------------------------------------------
-# RUN APPLICATION
-# --------------------------------------------------
+# START APPLICATION
 
 if __name__ == "__main__":
     init_db()
     app.run(debug=True)
+

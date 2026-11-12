@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Code | RideSync</title>
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+</head>
+
+<body>
+<div class="auth-container">
+    <div class="auth-card">
+        <h1>RideSync</h1>
+        <p class="subtitle">Campus Bike Rental System</p>
+        <h2>Verify Code</h2>
+
+        {% if message %}
+        <p class="error-message">{{ message }}</p>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('verify_otp') }}">
+            <label for="code">6-digit verification code</label>
+            <input
+                type="text"
+                id="code"
+                name="code"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                pattern="[0-9]{6}"
+                maxlength="6"
+                required
+            >
+
+            <button type="submit">Verify Code</button>
+        </form>
+
+        <p class="switch-text">
+            <a href="{{ url_for('forgot_password') }}">Request another code</a>
+        </p>
+    </div>
+</div>
+</body>
+
+</html>

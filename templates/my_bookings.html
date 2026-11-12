@@ -1,0 +1,74 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RideSync - My Bookings</title>
+</head>
+<body>
+    {% if is_admin %}
+        <h1>Rental Management</h1>
+    {% else %}
+        <h1>My Bookings</h1>
+    {% endif %}
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <p>{{ message }}</p>
+        {% endfor %}
+    {% endwith %}
+
+    {% if bookings %}
+        {% for booking in bookings %}
+            <div>
+                <h2>{{ booking["brand"] }} {{ booking["name"] }}</h2>
+
+                {% if is_admin %}
+                    <p>Customer: {{ booking["customer_name"] }}</p>
+                {% endif %}
+
+                <p>Registration: {{ booking["registration_number"] }}</p>
+                <p>Start: {{ booking["start_time"] }}</p>
+                <p>End: {{ booking["end_time"] }}</p>
+                <p>Total Price: Rs. {{ "%.2f"|format(booking["total_price"]) }}</p>
+
+                <p>
+                    Status:
+                    {% if booking["status"] == "completed" %}
+                        <strong>Completed / Returned</strong>
+                    {% elif booking["status"] == "confirmed" %}
+                        <strong>Confirmed</strong>
+                    {% elif booking["status"] == "cancelled" %}
+                        <strong>Cancelled</strong>
+                    {% else %}
+                        <strong>{{ booking["status"] }}</strong>
+                    {% endif %}
+                </p>
+
+                {% if is_admin and booking["status"] == "confirmed" %}
+                    <form method="POST"
+                          action="{{ url_for('booking.complete_booking', booking_id=booking['id']) }}">
+                        <button type="submit">Mark as Returned</button>
+                    </form>
+                {% endif %}
+
+                {% if not is_admin and booking["status"] == "confirmed" %}
+                    <form method="POST"
+                          action="{{ url_for('booking.cancel_booking', booking_id=booking['id']) }}">
+                        <button type="submit">Cancel Booking</button>
+                    </form>
+                {% endif %}
+            </div>
+            <hr>
+        {% endfor %}
+    {% else %}
+        <p>No bookings found.</p>
+    {% endif %}
+
+    {% if is_admin %}
+        <p><a href="{{ url_for('admin.dashboard') }}">Back to Admin Dashboard</a></p>
+    {% else %}
+        <p><a href="{{ url_for('vehicles') }}">Browse Vehicles</a></p>
+        <p><a href="{{ url_for('home') }}">Back to Home</a></p>
+    {% endif %}
+</body>
+</html>

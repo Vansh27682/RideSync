@@ -1,6 +1,112 @@
+
 {% extends "base.html" %}
+
 {% block title %}Sign in{% endblock %}
+
 {% block auth_content %}
-<div class="auth-layout"><div class="auth-visual"><a class="brand auth-brand" href="{{ url_for('login') }}"><span class="brand-mark">↗</span><span>ride<span class="brand-accent">sync</span><small>MOVE SMARTER</small></span></a><div class="auth-visual-copy"><div class="hero-tag"><span>✦</span> CAMPUS MOBILITY, REIMAGINED</div><h1>Make every<br>minute <em>move.</em></h1><p>Your campus. Your schedule. Your ride. A smarter way to get from here to there.</p></div><div class="auth-decoration"><div class="auth-circle"></div><div class="auth-bike">🏍️</div><span>30° 19' N&nbsp; 78° 02' E</span></div><div class="auth-bottom">RIDE YOUR WAY. EVERY DAY.</div></div>
-<div class="auth-main"><div class="auth-form-wrap"><div class="mobile-auth-brand">RIDE<span>SYNC</span></div><div class="eyebrow">WELCOME BACK</div><h2>Sign in to RideSync</h2><p class="auth-description">Pick up where your journey left off.</p><form method="post" class="auth-form"><label for="email">Email address</label><input id="email" type="email" name="email" placeholder="you@example.com" autocomplete="email" required><label for="password">Password</label><input id="password" type="password" name="password" placeholder="Enter your password" autocomplete="current-password" required><button class="button button-primary button-full" type="submit">Sign in <span>→</span></button></form><div class="auth-switch">New to RideSync? <a href="{{ url_for('register') }}">Create an account</a></div><div class="auth-legal">By continuing, you agree to RideSync's campus mobility terms.</div></div></div></div>
+
+<div class="auth-layout">
+
+    <div class="auth-visual">
+
+        <a class="brand auth-brand" href="{{ url_for('login') }}">
+            <span class="brand-mark">↗</span>
+            <span>
+                ride<span class="brand-accent">sync</span>
+                <small>MOVE SMARTER</small>
+            </span>
+        </a>
+
+        <div class="auth-visual-copy">
+            <div class="hero-tag">
+                <span>✦</span> RIDESYNC BIKE RENTALS
+            </div>
+
+            <h1>Make every<br>minute <em>move.</em></h1>
+
+            <p>
+                Your schedule. Your ride. A simpler way to get where you need to go.
+            </p>
+        </div>
+
+        <div class="auth-decoration">
+            <div class="auth-circle"></div>
+            <div class="auth-bike">🏍️</div>
+        </div>
+
+        <div class="auth-bottom">
+            RIDE YOUR WAY. EVERY DAY.
+        </div>
+
+    </div>
+
+    <div class="auth-main">
+
+        <div class="auth-form-wrap">
+
+            <div class="mobile-auth-brand">
+                RIDE<span>SYNC</span>
+            </div>
+
+            <div class="eyebrow">WELCOME BACK</div>
+
+            <h2>Sign in to RideSync</h2>
+
+            <p class="auth-description">
+                Pick up where your journey left off.
+            </p>
+
+            {% if success_message %}
+                <p class="success-message">{{ success_message }}</p>
+            {% endif %}
+
+            {% if message %}
+                <p class="error-message">{{ message }}</p>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('login') }}" class="auth-form">
+
+                <label for="identifier">Username or Email</label>
+
+                <input
+                    id="identifier"
+                    type="text"
+                    name="identifier"
+                    placeholder="Enter your username or email"
+                    autocomplete="username"
+                    required
+                >
+
+                <label for="password">Password</label>
+
+                <input
+                    id="password"
+                    type="password"
+                    name="password"
+                    placeholder="Enter your password"
+                    autocomplete="current-password"
+                    required
+                >
+
+                <button class="button button-primary button-full" type="submit">
+                    Sign in <span>→</span>
+                </button>
+
+            </form>
+
+            <div class="auth-switch">
+                New to RideSync?
+                <a href="{{ url_for('register') }}">Create an account</a>
+            </div>
+
+            <div class="auth-legal">
+                Welcome back to RideSync.
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
 {% endblock %}

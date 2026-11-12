@@ -1,0 +1,50 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | RideSync</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="dashboard-body">
+    <header class="topbar">
+        <div>
+            <h1>RideSync</h1>
+            <p>Admin dashboard</p>
+        </div>
+        <div class="user-area">
+            <span>{{ session.get("user_name", "Administrator") }}</span>
+            <a href="{{ url_for('logout') }}" class="top-logout">Logout</a>
+        </div>
+    </header>
+
+    <main class="admin-main">
+        <section class="welcome-section">
+            <h2>Vehicle Management</h2>
+            <p>Manage the RideSync fleet, bookings, and vehicle availability.</p>
+        </section>
+
+        <section class="dashboard-cards">
+            <article class="dashboard-card">
+                <h3>Manage Vehicles</h3>
+                <p>View, add, edit, remove, and update the status of vehicles.</p>
+                <a href="{{ url_for('admin.vehicles') }}">Open vehicle management</a>
+            </article>
+
+            <article class="dashboard-card">
+                <h3>Add a Vehicle</h3>
+                <p>Add a vehicle to the fleet using its details and registration.</p>
+                <a href="{{ url_for('admin.add_vehicle') }}">Add vehicle</a>
+            </article>
+
+            <article class="dashboard-card">
+                <h3>Manage Bookings</h3>
+                <p>View customer bookings and mark returned rentals as completed.</p>
+                <a href="{{ url_for('booking.manage_rentals') }}">Open booking management</a>
+            </article>
+        </section>
+    </main>
+</body>
+</html>
+```
