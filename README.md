@@ -110,3 +110,13 @@ Registration numbers must be unique. Vehicles with booking history cannot be del
 New public registrations continue to receive the regular student role.
 
 Admin access must be granted by a trusted operator; there is no public admin registration or role-promotion page. For local testing, register an account, then use a database client to update that account's `users.role` to `admin` before signing in again.
+
+## Installation and Setup
+
+Follow these steps to run RideSync locally.
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/Vansh27682/RideSync.git
+cd RideSync
